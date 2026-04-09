@@ -6,7 +6,7 @@ Production-grade Express/TypeScript API for ReUse Mart marketplace.
 
 ### Prerequisites
 - Node.js 18+
-- PostgreSQL running locally
+- Supabase PostgreSQL project (or any PostgreSQL instance)
 
 ### Installation
 
@@ -17,10 +17,17 @@ npm install
 ### Environment
 Copy `.env` and update credentials:
 ```
-DATABASE_URL="postgresql://postgres:password@localhost:5432/reusemart"
+DATABASE_URL="postgresql://postgres.<PROJECT_REF>:<DB_PASSWORD>@db.<PROJECT_REF>.supabase.co:5432/postgres?sslmode=require"
+DATABASE_POOL_URL="postgresql://postgres.<PROJECT_REF>:<DB_PASSWORD>@aws-0-<REGION>.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1&sslmode=require"
+DIRECT_URL="postgresql://postgres.<PROJECT_REF>:<DB_PASSWORD>@db.<PROJECT_REF>.supabase.co:5432/postgres?sslmode=require"
 JWT_SECRET="your_secret_here"
 PORT=4000
 ```
+
+Notes:
+- `DATABASE_POOL_URL` is used by the running API for better pooled connections.
+- `DIRECT_URL` is used by Prisma CLI migrations.
+- If you only provide one URL, set `DATABASE_URL`.
 
 ### Database Setup
 

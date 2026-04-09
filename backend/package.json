@@ -17,9 +17,6 @@
   "keywords": [],
   "author": "ReUse Mart",
   "license": "ISC",
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
-  },
   "dependencies": {
     "@prisma/adapter-pg": "*",
     "@prisma/client": "*",
