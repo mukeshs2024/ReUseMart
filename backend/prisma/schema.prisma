@@ -1,0 +1,124 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum SellerLevel {
+  BASIC
+  VERIFIED
+  TRUSTED
+  PRO
+}
+
+enum ActiveMode {
+  BUYER
+  SELLER
+}
+
+enum UserType {
+  BUYER
+  SELLER
+  BOTH
+}
+
+model User {
+  id               String      @id @default(uuid())
+  name             String
+  email            String      @unique
+  password         String
+  role             Role        @default(USER)
+  userType         UserType    @default(BUYER)
+  isSeller         Boolean     @default(false)
+  phone            String?
+  isPhoneVerified  Boolean     @default(false)
+  trustScore       Int         @default(0)
+  sellerLevel      SellerLevel @default(BASIC)
+  activeMode       ActiveMode  @default(BUYER)
+  avatarUrl        String?
+  createdAt        DateTime    @default(now())
+  products         Product[]
+  sentMessages     Message[]   @relation("BuyerMessages")
+  receivedMessages Message[]   @relation("SellerMessages")
+  buyerOrders      Order[]     @relation("BuyerOrders")
+  sellerOrders     Order[]     @relation("SellerOrders")
+}
+
+enum OrderStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum ProductCategory {
+  ELECTRONICS
+  MOBILES
+  FURNITURE
+  FASHION
+  ACCESSORIES
+}
+
+enum ProductCondition {
+  LIKE_NEW
+  USED
+  OLD
+  TOO_OLD
+}
+
+model Product {
+  id          String    @id @default(uuid())
+  title       String
+  description String
+  price       Float
+  category    ProductCategory @default(ELECTRONICS)
+  condition   ProductCondition @default(USED)
+  imageUrl    String
+  sellerId    String
+  seller      User      @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  paymentQrCode String?   // QR code image URL
+  paymentQrText  String?   // Data encoded in QR
+  createdAt   DateTime  @default(now())
+  messages    Message[]
+  orders      Order[]
+}
+
+model Order {
+  id        String      @id @default(uuid())
+  productId String
+  buyerId   String
+  sellerId  String
+  quantity  Int         @default(1)
+  amount    Float
+  status    OrderStatus @default(PENDING)
+  createdAt DateTime    @default(now())
+  product   Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  buyer     User        @relation("BuyerOrders", fields: [buyerId], references: [id], onDelete: Cascade)
+  seller    User        @relation("SellerOrders", fields: [sellerId], references: [id], onDelete: Cascade)
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  content   String
+  senderType MessageSender @default(BUYER)
+  buyerId   String
+  sellerId  String
+  productId String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  buyer     User     @relation("BuyerMessages", fields: [buyerId], references: [id], onDelete: Cascade)
+  seller    User     @relation("SellerMessages", fields: [sellerId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+enum MessageSender {
+  BUYER
+  SELLER
+}
