@@ -3,7 +3,7 @@ import app from './app';
 import { createServer } from 'http';
 import { initializeChatSocket } from './realtime/chatSocket';
 
-const PORT = process.env.PORT || 4000;
+const PORT = Number(process.env.PORT) || 10000;
 const server = createServer(app);
 
 initializeChatSocket(server);

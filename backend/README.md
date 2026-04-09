@@ -17,17 +17,15 @@ npm install
 ### Environment
 Copy `.env` and update credentials:
 ```
-DATABASE_URL="postgresql://postgres.<PROJECT_REF>:<DB_PASSWORD>@db.<PROJECT_REF>.supabase.co:5432/postgres?sslmode=require"
-DATABASE_POOL_URL="postgresql://postgres.<PROJECT_REF>:<DB_PASSWORD>@aws-0-<REGION>.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1&sslmode=require"
-DIRECT_URL="postgresql://postgres.<PROJECT_REF>:<DB_PASSWORD>@db.<PROJECT_REF>.supabase.co:5432/postgres?sslmode=require"
+DATABASE_URL="postgresql://postgres.<PROJECT_REF>:<ENCODED_DB_PASSWORD>@aws-1-<REGION>.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1&sslmode=require"
 JWT_SECRET="your_secret_here"
 PORT=4000
 ```
 
 Notes:
-- `DATABASE_POOL_URL` is used by the running API for better pooled connections.
-- `DIRECT_URL` is used by Prisma CLI migrations.
-- If you only provide one URL, set `DATABASE_URL`.
+- Use the Supabase pooling URL (port `6543`) for runtime and deployment environments.
+- URL-encode special characters in DB password (for example `@` -> `%40`, `#` -> `%23`, `$` -> `%24`).
+- In Render, set `NODE_ENV=production` and let Render inject `PORT` dynamically.
 
 ### Database Setup
 
@@ -49,6 +47,37 @@ npm run dev
 ```
 
 Server runs at **http://localhost:4000**
+
+## Deploy on Render
+
+### Web Service settings
+- Root directory: `backend`
+- Build command:
+```bash
+npm install && npm run build && npx prisma generate
+```
+- Start command:
+```bash
+node dist/index.js
+```
+
+### Required environment variables
+```bash
+DATABASE_URL=<supabase_pooling_url_on_6543>
+JWT_SECRET=<strong_secret>
+NODE_ENV=production
+```
+
+### Apply migrations in production (recommended)
+Run once after deploy:
+```bash
+npx prisma migrate deploy
+```
+
+Or include it in build command:
+```bash
+npm install && npm run build && npx prisma generate && npx prisma migrate deploy
+```
 
 ---
 

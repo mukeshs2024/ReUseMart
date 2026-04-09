@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
-import type { Prisma } from '../generated/prisma';
+import type { Prisma } from '@prisma/client';
 
 // Helper function to generate QR code URL
 function buildQrCodeUrl(paymentText: string): string {
