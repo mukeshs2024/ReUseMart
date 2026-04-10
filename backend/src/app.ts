@@ -1,6 +1,5 @@
 import 'dotenv/config';
 import express, { Request, Response, NextFunction } from 'express';
-import cors from 'cors';
 
 import authRoutes from './routes/auth';
 import productRoutes from './routes/products';
@@ -11,24 +10,6 @@ import messageRoutes from './routes/messages';
 const app = express();
 
 // --- Middleware ---
-app.use(cors({
-    origin: (origin, callback) => {
-        // Allow requests from environment variable or dynamic localhost ports
-        const allowedOrigins = [
-            process.env.FRONTEND_URL,
-            'http://localhost:3000',
-            'http://localhost:3001',
-            'http://localhost:3002',
-        ].filter(Boolean);
-
-        if (!origin || allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
-    credentials: true,
-}));
 app.use(express.json());
 
 // --- Routes ---

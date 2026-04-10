@@ -28,15 +28,6 @@ let io: Server | null = null;
 
 const userRoom = (userId: string) => `user:${userId}`;
 
-const getAllowedOrigins = (): string[] => {
-    return [
-        process.env.FRONTEND_URL,
-        'http://localhost:3000',
-        'http://localhost:3001',
-        'http://localhost:3002',
-    ].filter((origin): origin is string => Boolean(origin));
-};
-
 const extractToken = (socket: Socket): string | null => {
     const authToken = socket.handshake.auth?.token;
     if (typeof authToken === 'string' && authToken.trim()) {
@@ -58,21 +49,7 @@ const extractToken = (socket: Socket): string | null => {
 };
 
 export const initializeChatSocket = (httpServer: HttpServer): Server => {
-    const allowedOrigins = getAllowedOrigins();
-
-    io = new Server(httpServer, {
-        cors: {
-            origin: (origin, callback) => {
-                if (!origin || allowedOrigins.includes(origin)) {
-                    callback(null, true);
-                    return;
-                }
-
-                callback(new Error('Not allowed by CORS'));
-            },
-            credentials: true,
-        },
-    });
+    io = new Server(httpServer);
 
     io.use((socket, next) => {
         try {

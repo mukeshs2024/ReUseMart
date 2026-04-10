@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 
 const globalForPrisma = globalThis as unknown as {
     prisma: PrismaClient | undefined;
@@ -14,8 +14,11 @@ function createPrismaClient() {
     // PrismaClient reads DATABASE_URL from env, so map pool URL to DATABASE_URL when present.
     process.env.DATABASE_URL = runtimeConnectionString;
 
+    const logLevels: Prisma.LogLevel[] =
+        process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'];
+
     return new PrismaClient({
-        log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
+        log: logLevels,
     });
 }
 
