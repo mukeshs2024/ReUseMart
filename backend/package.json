@@ -21,6 +21,7 @@
   "dependencies": {
     "@prisma/adapter-pg": "*",
     "@prisma/client": "*",
+    "@supabase/supabase-js": "*",
     "bcryptjs": "*",
     "dotenv": "*",
     "express": "*",

@@ -78,6 +78,7 @@ model Product {
   title       String
   description String
   price       Float
+  stock       Int       @default(1)
   category    ProductCategory @default(ELECTRONICS)
   condition   ProductCondition @default(USED)
   imageUrl    String

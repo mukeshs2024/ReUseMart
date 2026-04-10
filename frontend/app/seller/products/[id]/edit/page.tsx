@@ -30,6 +30,7 @@ export default function EditProductPage() {
         title: '',
         description: '',
         price: '',
+        stock: '1',
         category: 'ELECTRONICS',
         condition: 'USED',
         imageUrl: '',
@@ -53,6 +54,7 @@ export default function EditProductPage() {
                     title: p.title,
                     description: p.description,
                     price: String(p.price),
+                    stock: String(p.stock ?? 1),
                     category: p.category || 'ELECTRONICS',
                     condition: p.condition || 'USED',
                     imageUrl: p.imageUrl,
@@ -70,6 +72,7 @@ export default function EditProductPage() {
             await api.put(`/seller/products/${id}`, {
                 ...form,
                 price: parseFloat(form.price),
+                stock: parseInt(form.stock, 10),
             });
             router.push('/seller/products');
         } catch (err: any) {
@@ -154,6 +157,19 @@ export default function EditProductPage() {
                                 step="0.01"
                             />
                         </div>
+                    </div>
+
+                    <div>
+                        <label className="input-label">Available Quantity *</label>
+                        <input
+                            type="number"
+                            className="input-field"
+                            value={form.stock}
+                            onChange={(e) => setForm({ ...form, stock: e.target.value })}
+                            required
+                            min="1"
+                            step="1"
+                        />
                     </div>
 
                     <div>

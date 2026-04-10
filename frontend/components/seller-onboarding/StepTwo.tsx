@@ -6,8 +6,9 @@ import { motion } from 'framer-motion';
 interface StepTwoProps {
     onSubmit: (data: { otp: string }) => Promise<void>;
     onBack: () => void;
+    onResend: () => Promise<void>;
     loading: boolean;
-    phone: string;
+    email: string;
 }
 
 const container = {
@@ -19,10 +20,11 @@ const item = {
     show:   { opacity: 1, y: 0, transition: { duration: 0.32, ease: 'easeOut' as const } },
 };
 
-export default function StepTwo({ onSubmit, onBack, loading, phone }: StepTwoProps) {
+export default function StepTwo({ onSubmit, onBack, onResend, loading, email }: StepTwoProps) {
     const [otp, setOtp] = useState('');
     const [otpError, setOtpError] = useState('');
     const [resendTimer, setResendTimer] = useState(0);
+    const [resending, setResending] = useState(false);
 
     useEffect(() => {
         if (resendTimer > 0) {
@@ -49,20 +51,27 @@ export default function StepTwo({ onSubmit, onBack, loading, phone }: StepTwoPro
         }
     };
 
-    const handleResendOtp = () => {
-        // In a real app, this would resend OTP
-        setResendTimer(30);
-        setOtp('');
+    const handleResendOtp = async () => {
         setOtpError('');
+        setResending(true);
+        try {
+            await onResend();
+            setResendTimer(30);
+            setOtp('');
+        } catch {
+            setOtpError('Failed to resend OTP. Please try again.');
+        } finally {
+            setResending(false);
+        }
     };
 
     return (
         <motion.div variants={container} initial="hidden" animate="show" className="space-y-8">
             <motion.div variants={item}>
                 <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: 'var(--accent-primary)' }}>Step 02</div>
-                <h2 className="text-2xl font-extrabold mb-1" style={{ color: 'var(--text-primary)' }}>Verify Your Phone</h2>
+                <h2 className="text-2xl font-extrabold mb-1" style={{ color: 'var(--text-primary)' }}>Verify Your Email</h2>
                 <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                    OTP sent to <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>{phone}</span>
+                    OTP sent to <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>{email}</span>
                 </p>
             </motion.div>
 
@@ -86,7 +95,7 @@ export default function StepTwo({ onSubmit, onBack, loading, phone }: StepTwoPro
                     className="p-3.5 rounded-xl text-sm"
                     style={{ background: 'rgba(40, 116, 240, 0.06)', border: '1px solid rgba(40, 116, 240, 0.18)' }}>
                     <p style={{ color: 'var(--text-secondary)' }}>
-                        Enter the 6-digit OTP sent to your phone number to continue.
+                        Enter the 6-digit OTP sent to your email to continue.
                     </p>
                 </motion.div>
 
@@ -108,8 +117,14 @@ export default function StepTwo({ onSubmit, onBack, loading, phone }: StepTwoPro
                     {resendTimer > 0 ? (
                         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Resend in <span style={{ color: 'var(--accent-primary)' }}>{resendTimer}s</span></p>
                     ) : (
-                        <button type="button" onClick={handleResendOtp} className="text-xs font-medium" style={{ color: 'var(--accent-primary)' }}>
-                            Resend OTP
+                        <button
+                            type="button"
+                            onClick={handleResendOtp}
+                            disabled={loading || resending}
+                            className="text-xs font-medium"
+                            style={{ color: 'var(--accent-primary)' }}
+                        >
+                            {resending ? 'Sending...' : 'Resend OTP'}
                         </button>
                     )}
                 </motion.div>

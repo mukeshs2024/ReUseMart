@@ -14,6 +14,7 @@ interface Product {
     title: string;
     description: string;
     price: number;
+    stock: number;
     category: 'ELECTRONICS' | 'MOBILES' | 'FURNITURE' | 'FASHION' | 'ACCESSORIES';
     condition: 'LIKE_NEW' | 'USED' | 'OLD' | 'TOO_OLD';
     imageUrl: string;
@@ -181,6 +182,9 @@ export default function SellerProductsPage() {
                                     </p>
                                     <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
                                         Condition: {conditionLabel(product.condition)}
+                                    </p>
+                                    <p className="text-xs mb-2" style={{ color: product.stock > 0 ? 'var(--text-muted)' : '#B91C1C' }}>
+                                        Stock: {product.stock}
                                     </p>
                                     <p className="text-sm line-clamp-2 mb-4" style={{ color: 'var(--text-secondary)' }}>{product.description}</p>
                                     <div className="flex gap-2 flex-wrap">

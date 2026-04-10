@@ -16,6 +16,7 @@ import {
     getSellerAnalytics,
     createOrder,
     generateProductPaymentQr,
+    getBuyerOrderHistory,
 } from '../controllers/seller.controller';
 
 const router = Router();
@@ -23,10 +24,10 @@ const router = Router();
 // ==================== PUBLIC ONBOARDING ROUTES ====================
 // These are available to authenticated users who want to become sellers
 
-// Step 1: Initiate seller onboarding (provide name & phone)
+// Step 1: Initiate seller onboarding (provide name, send email OTP)
 router.post('/onboard/initiate', authenticate, initiateSeller);
 
-// Step 2: Verify OTP
+// Step 2: Verify email OTP
 router.post('/onboard/verify-otp', authenticate, verifySellerOtp);
 
 // Step 3: Complete seller profile
@@ -58,6 +59,7 @@ router.post('/products/:id/generate-qr', requireSeller, generateProductPaymentQr
 router.get('/analytics', requireSeller, getSellerAnalytics);
 
 // Orders
+router.get('/orders/history', getBuyerOrderHistory);
 router.post('/orders', requireBuyerMode, createOrder);
 
 export default router;

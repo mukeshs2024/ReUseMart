@@ -11,11 +11,13 @@ import {
     Menu,
     Package,
     Search,
+    ShoppingCart,
     Tag,
     UserCircle2,
     X,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
+import { useCartStore } from '@/store/cartStore';
 import { getActiveMarketplaceMode, isSellerAccount, isSellerMode } from '@/lib/authMode';
 import api from '@/lib/axios';
 import { disconnectChatSocket, getChatSocket, type LiveChatMessage } from '@/lib/chatSocket';
@@ -23,12 +25,14 @@ import { disconnectChatSocket, getChatSocket, type LiveChatMessage } from '@/lib
 const BUYER_LINKS = [
     { href: '/', label: 'Home', icon: null },
     { href: '/products', label: 'All Products', icon: null },
+    { href: '/profile', label: 'Profile', icon: UserCircle2 },
     { href: '/messages', label: 'Messages', icon: Inbox },
 ];
 
 const SELLER_LINKS = [
     { href: '/seller/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/seller/products', label: 'My Listings', icon: Package },
+    { href: '/profile', label: 'Profile', icon: UserCircle2 },
     { href: '/messages', label: 'Messages', icon: Inbox },
 ];
 
@@ -44,6 +48,7 @@ export function Navbar() {
     const [unreadCount, setUnreadCount] = useState(0);
     const [query, setQuery] = useState('');
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const cartCount = useCartStore((state) => state.items.reduce((sum, item) => sum + item.quantity, 0));
 
     const isSeller = isSellerAccount(user);
     const activeMode = getActiveMarketplaceMode(user);
@@ -175,6 +180,12 @@ export function Navbar() {
         router.push('/');
     };
 
+    const handleCartClick = () => {
+        setDropdownOpen(false);
+        setMobileOpen(false);
+        router.push('/cart');
+    };
+
     return (
         <header
             className="fixed top-0 left-0 right-0 z-50"
@@ -219,25 +230,58 @@ export function Navbar() {
                     </Link>
 
                     <div className="relative group">
-                        <button className="inline-flex items-center gap-1 text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                        <button
+                            type="button"
+                            className="inline-flex items-center gap-1 text-sm font-medium"
+                            style={{ color: 'var(--text-secondary)' }}
+                        >
                             Categories <ChevronDown className="w-4 h-4" />
                         </button>
-                        <div className="absolute top-8 left-0 w-44 card p-2 hidden group-hover:block">
-                            {CATEGORIES.map((category) => (
-                                <button
-                                    key={category}
-                                    onClick={() => router.push(`/products?category=${encodeURIComponent(category)}`)}
-                                    className="w-full text-left px-2 py-1.5 rounded-md text-sm"
-                                    style={{ color: 'var(--text-secondary)' }}
-                                >
-                                    {category}
-                                </button>
-                            ))}
+                        <div className="absolute left-0 top-full w-44 pt-2 opacity-0 invisible translate-y-1 transition-all duration-150 ease-out group-hover:visible group-hover:opacity-100 group-hover:translate-y-0 group-focus-within:visible group-focus-within:opacity-100 group-focus-within:translate-y-0">
+                            <div className="card p-2">
+                                {CATEGORIES.map((category) => (
+                                    <button
+                                        key={category}
+                                        type="button"
+                                        onClick={() => router.push(`/products?category=${encodeURIComponent(category)}`)}
+                                        className="w-full text-left px-2 py-1.5 rounded-md text-sm transition-colors"
+                                        style={{ color: 'var(--text-secondary)' }}
+                                    >
+                                        {category}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <div className="hidden lg:flex items-center gap-3 ml-auto">
+                    <button onClick={handleCartClick} className="btn-secondary" style={{ padding: '8px 12px', position: 'relative' }}>
+                        <ShoppingCart className="w-4 h-4" /> Cart
+                        {cartCount > 0 && (
+                            <span
+                                style={{
+                                    position: 'absolute',
+                                    top: -6,
+                                    right: -6,
+                                    minWidth: 18,
+                                    height: 18,
+                                    borderRadius: 99,
+                                    background: 'var(--accent-primary)',
+                                    color: '#fff',
+                                    fontSize: 11,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    padding: '0 5px',
+                                    fontWeight: 700,
+                                }}
+                            >
+                                {cartCount}
+                            </span>
+                        )}
+                    </button>
+
                     {!sellerModeActive && (
                         <button onClick={handleSellNow} className="btn-secondary" style={{ padding: '8px 12px' }}>
                             <Tag className="w-4 h-4" /> Sell
@@ -370,6 +414,14 @@ export function Navbar() {
                                 {item.label}
                             </Link>
                         ))}
+
+                        <button
+                            onClick={handleCartClick}
+                            className="w-full flex items-center gap-2 px-2 py-2 rounded-md text-sm"
+                            style={{ color: 'var(--text-secondary)' }}
+                        >
+                            <ShoppingCart className="w-4 h-4" /> Cart {cartCount > 0 ? `(${cartCount})` : ''}
+                        </button>
 
                         {CATEGORIES.map((category) => (
                             <button

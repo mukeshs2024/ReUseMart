@@ -4,10 +4,10 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 
 interface StepOneProps {
-    onSubmit: (data: { fullName: string; phone: string }) => Promise<void>;
+    onSubmit: (data: { fullName: string }) => Promise<void>;
     loading: boolean;
     defaultName?: string;
-    defaultPhone?: string;
+    email: string;
 }
 
 const container = {
@@ -19,24 +19,19 @@ const item = {
     show:   { opacity: 1, y: 0, transition: { duration: 0.32, ease: 'easeOut' as const } },
 };
 
-export default function StepOne({ onSubmit, loading, defaultName = '', defaultPhone = '' }: StepOneProps) {
+export default function StepOne({ onSubmit, loading, defaultName = '', email }: StepOneProps) {
     const [fullName, setFullName] = useState(defaultName);
-    const [phone, setPhone] = useState(defaultPhone);
     const [nameError, setNameError] = useState('');
-    const [phoneError, setPhoneError] = useState('');
 
     const validateForm = (): boolean => {
         setNameError('');
-        setPhoneError('');
         if (fullName.trim().length < 2) { setNameError('Full name must be at least 2 characters'); return false; }
-        const phoneRegex = /^\+?[1-9]\d{1,14}$/;
-        if (!phoneRegex.test(phone)) { setPhoneError('Please enter a valid phone number'); return false; }
         return true;
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (validateForm()) await onSubmit({ fullName, phone });
+        if (validateForm()) await onSubmit({ fullName });
     };
 
     return (
@@ -64,14 +59,16 @@ export default function StepOne({ onSubmit, loading, defaultName = '', defaultPh
                 </motion.div>
 
                 <motion.div variants={item} className="space-y-2">
-                    <label className="input-label text-xs font-semibold uppercase tracking-wider">Phone Number</label>
+                    <label className="input-label text-xs font-semibold uppercase tracking-wider">Verification Email</label>
                     <input
-                        type="tel" value={phone} onChange={(e) => setPhone(e.target.value)}
-                        placeholder="+1 555 000-0000"
+                        type="email"
+                        value={email}
+                        readOnly
                         className="input-field"
-                        style={phoneError ? { borderColor: '#DC2626' } : undefined}
                     />
-                    {phoneError && <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="text-xs" style={{ color: '#EF4444' }}>{phoneError}</motion.p>}
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        We will send a one-time code to this email address.
+                    </p>
                 </motion.div>
 
                 <motion.div variants={item}>

@@ -4,6 +4,7 @@ import { prisma } from '../lib/prisma';
 import { signToken } from '../config/jwt';
 import { AuthRequest } from '../middleware/auth';
 import { emitOrderPlaced } from '../realtime/chatSocket';
+import { getSupabaseClient } from '../lib/supabase';
 
 const resolveParamId = (value: unknown): string | null => {
     if (typeof value === 'string' && value.trim().length > 0) {
@@ -53,6 +54,7 @@ const productSchema = z.object({
     title: z.string().min(2, 'Title must be at least 2 characters'),
     description: z.string().min(10, 'Description must be at least 10 characters'),
     price: z.number().positive('Price must be a positive number'),
+    stock: z.number().int().min(1, 'Stock must be at least 1').max(9999, 'Stock is too large'),
     category: z.enum(['ELECTRONICS', 'MOBILES', 'FURNITURE', 'FASHION', 'ACCESSORIES']),
     condition: z.enum(['LIKE_NEW', 'USED', 'OLD', 'TOO_OLD']),
     imageUrl: z.string().url('Image URL must be a valid URL'),
@@ -63,11 +65,9 @@ const productUpdateSchema = productSchema.partial();
 // Seller onboarding schemas
 const initiateSellerSchema = z.object({
     fullName: z.string().min(2, 'Full name must be at least 2 characters'),
-    phone: z.string().regex(/^\+?[1-9]\d{1,14}$/, 'Invalid phone number format'),
 });
 
 const verifyOtpSchema = z.object({
-    phone: z.string(),
     otp: z.string().length(6, 'OTP must be 6 digits'),
 });
 
@@ -83,9 +83,6 @@ const createOrderSchema = z.object({
     productId: z.string().min(1, 'productId is required'),
     quantity: z.number().int().min(1).max(20).optional(),
 });
-
-// In-memory OTP storage (for distributed deployments, use Redis or database)
-const otpStorage: Record<string, { code: string; expiresAt: number }> = {};
 
 export const activateSeller = async (req: AuthRequest, res: Response): Promise<void> => {
     const userId = req.user!.id;
@@ -295,8 +292,8 @@ export const deleteProduct = async (req: AuthRequest, res: Response): Promise<vo
 // ==================== SELLER ONBOARDING ENDPOINTS ====================
 
 /**
- * Step 1: Initiate seller onboarding with name and phone
- * Generates a one-time OTP
+ * Step 1: Initiate seller onboarding with name
+ * Sends a one-time email OTP via Supabase
  */
 export const initiateSeller = async (req: AuthRequest, res: Response): Promise<void> => {
     const parsed = initiateSellerSchema.safeParse(req.body);
@@ -306,7 +303,7 @@ export const initiateSeller = async (req: AuthRequest, res: Response): Promise<v
     }
 
     const userId = req.user!.id;
-    const { fullName, phone } = parsed.data;
+    const { fullName } = parsed.data;
 
     try {
         // Check if user already a seller
@@ -322,26 +319,39 @@ export const initiateSeller = async (req: AuthRequest, res: Response): Promise<v
             return;
         }
 
-        // Update user with phone (not verified yet)
+        // Update user profile (verification remains pending until OTP confirmation)
         await prisma.user.update({
             where: { id: userId },
             data: {
                 name: fullName,
-                phone: phone,
                 isPhoneVerified: false,
             },
         });
 
-        // Generate OTP
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+        let supabase: ReturnType<typeof getSupabaseClient>;
+        try {
+            supabase = getSupabaseClient();
+        } catch {
+            res.status(500).json({ error: 'Email OTP service is not configured' });
+            return;
+        }
 
-        // Store OTP
-        otpStorage[phone] = { code: otp, expiresAt };
+        const { error } = await supabase.auth.signInWithOtp({
+            email: user.email,
+            options: {
+                shouldCreateUser: true,
+            },
+        });
+
+        if (error) {
+            console.error('Supabase send OTP error:', error.message);
+            res.status(502).json({ error: 'Failed to send email OTP' });
+            return;
+        }
 
         res.json({
-            message: 'OTP sent successfully',
-            phone: phone,
+            message: 'Email OTP sent successfully',
+            email: user.email,
         });
     } catch (err) {
         console.error('Initiate seller error:', err);
@@ -350,7 +360,7 @@ export const initiateSeller = async (req: AuthRequest, res: Response): Promise<v
 };
 
 /**
- * Step 2: Verify OTP and mark phone as verified
+ * Step 2: Verify OTP and mark email as verified for seller onboarding
  */
 export const verifySellerOtp = async (req: AuthRequest, res: Response): Promise<void> => {
     const parsed = verifyOtpSchema.safeParse(req.body);
@@ -360,28 +370,35 @@ export const verifySellerOtp = async (req: AuthRequest, res: Response): Promise<
     }
 
     const userId = req.user!.id;
-    const { phone, otp } = parsed.data;
+    const { otp } = parsed.data;
 
     try {
-        // Check if OTP exists and is valid
-        const storedOtp = otpStorage[phone];
-        if (!storedOtp) {
-            res.status(400).json({ error: 'OTP expired or not found' });
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            res.status(404).json({ error: 'User not found' });
             return;
         }
 
-        if (storedOtp.expiresAt < Date.now()) {
-            delete otpStorage[phone];
-            res.status(400).json({ error: 'OTP expired' });
+        let supabase: ReturnType<typeof getSupabaseClient>;
+        try {
+            supabase = getSupabaseClient();
+        } catch {
+            res.status(500).json({ error: 'Email OTP service is not configured' });
             return;
         }
 
-        if (storedOtp.code !== otp) {
-            res.status(400).json({ error: 'Invalid OTP' });
+        const { error } = await supabase.auth.verifyOtp({
+            email: user.email,
+            token: otp,
+            type: 'email',
+        });
+
+        if (error) {
+            res.status(400).json({ error: 'Invalid or expired OTP' });
             return;
         }
 
-        // Update user: phone verified, become seller with VERIFIED level
+        // Update user: seller verified via email OTP
         const updated = await prisma.user.update({
             where: { id: userId },
             data: {
@@ -394,9 +411,6 @@ export const verifySellerOtp = async (req: AuthRequest, res: Response): Promise<
             },
         });
 
-        // Clean up OTP
-        delete otpStorage[phone];
-
         // Generate new token with updated user info
         const token = signToken({
             id: updated.id,
@@ -408,7 +422,7 @@ export const verifySellerOtp = async (req: AuthRequest, res: Response): Promise<
         });
 
         res.json({
-            message: 'Phone verified successfully',
+            message: 'Email verified successfully',
             token,
             user: {
                 id: updated.id,
@@ -449,7 +463,7 @@ export const completeSellerProfile = async (req: AuthRequest, res: Response): Pr
         }
 
         if (!user.isPhoneVerified) {
-            res.status(400).json({ error: 'Please verify your phone first' });
+            res.status(400).json({ error: 'Please verify your email first' });
             return;
         }
 
@@ -782,7 +796,7 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
     try {
         const product = await prisma.product.findUnique({
             where: { id: productId },
-            select: { id: true, price: true, sellerId: true },
+            select: { id: true, price: true, sellerId: true, stock: true },
         });
 
         if (!product) {
@@ -795,17 +809,38 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
             return;
         }
 
-        const order = await prisma.order.create({
-            data: {
-                productId: product.id,
-                buyerId,
-                sellerId: product.sellerId,
-                quantity,
-                amount: product.price * quantity,
-                // Payment is confirmed client-side before placing the order,
-                // so this order should contribute to seller revenue immediately.
-                status: 'COMPLETED',
-            },
+        if (product.stock < quantity) {
+            res.status(400).json({ error: `Only ${product.stock} item(s) left in stock` });
+            return;
+        }
+
+        const order = await prisma.$transaction(async (tx) => {
+            const updatedCount = await tx.product.updateMany({
+                where: {
+                    id: product.id,
+                    stock: { gte: quantity },
+                },
+                data: {
+                    stock: { decrement: quantity },
+                },
+            });
+
+            if (updatedCount.count === 0) {
+                throw new Error('INSUFFICIENT_STOCK');
+            }
+
+            return tx.order.create({
+                data: {
+                    productId: product.id,
+                    buyerId,
+                    sellerId: product.sellerId,
+                    quantity,
+                    amount: product.price * quantity,
+                    // Payment is confirmed client-side before placing the order,
+                    // so this order should contribute to seller revenue immediately.
+                    status: 'COMPLETED',
+                },
+            });
         });
 
         emitOrderPlaced({
@@ -824,7 +859,66 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
             message: 'Order placed successfully',
         });
     } catch (err) {
+        if (err instanceof Error && err.message === 'INSUFFICIENT_STOCK') {
+            res.status(400).json({ error: 'Insufficient stock for this order' });
+            return;
+        }
+
         console.error('Create order error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+/**
+ * GET /seller/orders/history
+ * Returns the authenticated buyer's purchase history and summary stats.
+ */
+export const getBuyerOrderHistory = async (req: AuthRequest, res: Response): Promise<void> => {
+    const buyerId = req.user!.id;
+
+    try {
+        const orders = await prisma.order.findMany({
+            where: {
+                buyerId,
+                status: { not: 'CANCELLED' },
+            },
+            orderBy: { createdAt: 'desc' },
+            select: {
+                id: true,
+                quantity: true,
+                amount: true,
+                status: true,
+                createdAt: true,
+                product: {
+                    select: {
+                        id: true,
+                        title: true,
+                        imageUrl: true,
+                        price: true,
+                    },
+                },
+                seller: {
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
+            },
+        });
+
+        const totalItemsBought = orders.reduce((sum, order) => sum + order.quantity, 0);
+        const totalAmountSpent = orders.reduce((sum, order) => sum + order.amount, 0);
+
+        res.json({
+            summary: {
+                totalOrders: orders.length,
+                totalItemsBought,
+                totalAmountSpent,
+            },
+            orders,
+        });
+    } catch (err) {
+        console.error('Get buyer order history error:', err);
         res.status(500).json({ error: 'Internal server error' });
     }
 };

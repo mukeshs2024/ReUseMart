@@ -18,6 +18,7 @@ interface Product {
     title: string;
     description: string;
     price: number;
+    stock?: number;
     category?: 'ELECTRONICS' | 'MOBILES' | 'FURNITURE' | 'FASHION' | 'ACCESSORIES';
     imageUrl: string;
     condition?: string;

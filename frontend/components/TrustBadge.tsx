@@ -27,7 +27,7 @@ const badgeConfig: Record<SellerLevel, {
         icon: 'âœ”',
         label: 'Verified',
         className: 'bg-blue-500/10 text-blue-300 border border-blue-500/30',
-        description: 'Phone verified',
+        description: 'Email verified',
     },
     TRUSTED: {
         icon: 'â­',

@@ -23,8 +23,8 @@ export default function BecomeSellerPage() {
     const [currentStep, setCurrentStep] = useState<Step>(1);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const [phone, setPhone] = useState('');
     const [fullName, setFullName] = useState('');
+    const verifiedEmail = user?.email ?? '';
 
     useEffect(() => {
         if (!user) {
@@ -47,16 +47,34 @@ export default function BecomeSellerPage() {
         return null;
     }
 
-    const handleStep1Submit = async (data: { fullName: string; phone: string }) => {
+    const handleStep1Submit = async (data: { fullName: string }) => {
         setLoading(true);
         setError('');
         try {
-            await api.post('/seller/onboard/initiate', { fullName: data.fullName, phone: data.phone });
+            await api.post('/seller/onboard/initiate', { fullName: data.fullName });
             setFullName(data.fullName);
-            setPhone(data.phone);
             setCurrentStep(2);
         } catch (err: any) {
             setError(err.response?.data?.error || 'Failed to initiate seller registration');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleResendOtp = async () => {
+        if (!fullName.trim()) {
+            setError('Please complete step 1 before resending OTP');
+            throw new Error('Full name is required before resending OTP');
+        }
+
+        setLoading(true);
+        setError('');
+        try {
+            await api.post('/seller/onboard/initiate', { fullName });
+        } catch (err: any) {
+            const message = err.response?.data?.error || 'Failed to resend OTP';
+            setError(message);
+            throw new Error(message);
         } finally {
             setLoading(false);
         }
@@ -66,7 +84,7 @@ export default function BecomeSellerPage() {
         setLoading(true);
         setError('');
         try {
-            const response = await api.post('/seller/onboard/verify-otp', { phone, otp: data.otp });
+            const response = await api.post('/seller/onboard/verify-otp', { otp: data.otp });
 
             if (response.data.token && response.data.user) {
                 setAuth(response.data.user, response.data.token);
@@ -218,8 +236,16 @@ export default function BecomeSellerPage() {
                                         exit={{ x: -12, opacity: 0 }}
                                         transition={{ duration: 0.22, ease: 'easeInOut' }}
                                     >
-                                        {currentStep === 1 && <StepOne onSubmit={handleStep1Submit} loading={loading} defaultName={fullName} defaultPhone={phone} />}
-                                        {currentStep === 2 && <StepTwo onSubmit={handleStep2Submit} onBack={() => setCurrentStep(1)} loading={loading} phone={phone} />}
+                                        {currentStep === 1 && <StepOne onSubmit={handleStep1Submit} loading={loading} defaultName={fullName} email={verifiedEmail} />}
+                                        {currentStep === 2 && (
+                                            <StepTwo
+                                                onSubmit={handleStep2Submit}
+                                                onBack={() => setCurrentStep(1)}
+                                                onResend={handleResendOtp}
+                                                loading={loading}
+                                                email={verifiedEmail}
+                                            />
+                                        )}
                                         {currentStep === 3 && <StepThree onSubmit={handleStep3Submit} onBack={() => setCurrentStep(2)} loading={loading} />}
                                         {currentStep === 'success' && <SuccessScreen onContinue={() => router.push('/products')} />}
                                     </motion.div>

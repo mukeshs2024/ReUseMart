@@ -98,7 +98,7 @@ export default function StepThree({ onSubmit, onBack, loading }: StepThreeProps)
                     className="p-3.5 rounded-xl"
                     style={{ background: 'rgba(40, 116, 240, 0.06)', border: '1px solid rgba(40, 116, 240, 0.18)' }}>
                     <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                        <span style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>Phone verified.</span> One step away from becoming a trusted seller.
+                        <span style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>Email verified.</span> One step away from becoming a trusted seller.
                     </p>
                 </motion.div>
 
@@ -133,7 +133,7 @@ export default function StepThree({ onSubmit, onBack, loading }: StepThreeProps)
                 <h3 className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Your Trust Journey</h3>
                 <ul className="space-y-1.5">
                     {[
-                        'Phone verified -> Trust score: 50',
+                        'Email verified -> Trust score: 50',
                         'Profile completed -> Trust score: 75',
                         'Pro Seller Badge at 80+ score',
                     ].map((text, i) => (

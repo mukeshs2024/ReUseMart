@@ -10,7 +10,7 @@ interface ProgressIndicatorProps {
 export default function ProgressIndicator({ currentStep, totalSteps }: ProgressIndicatorProps) {
     const steps = [
         { number: 1, title: 'Personal Info' },
-        { number: 2, title: 'Verify Phone' },
+        { number: 2, title: 'Verify Email' },
         { number: 3, title: 'Complete Profile' },
     ];
 

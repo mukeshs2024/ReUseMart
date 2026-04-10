@@ -1,19 +1,22 @@
 ﻿'use client';
 
 import Link from 'next/link';
-import { BadgeCheck } from 'lucide-react';
+import { useState } from 'react';
+import { BadgeCheck, ShoppingCart } from 'lucide-react';
 import {
     estimateOriginalPrice,
     formatCurrency,
     normalizeCondition,
     savingsPercent,
 } from '@/lib/utils';
+import { useCartStore } from '@/store/cartStore';
 
 interface Product {
     id: string;
     title: string;
     description: string;
     price: number;
+    stock?: number;
     imageUrl: string;
     condition?: string;
     createdAt: string;
@@ -25,10 +28,29 @@ export function ProductCard({ product }: { product: Product }) {
     const condition = normalizeCondition(product.condition);
     const originalPrice = estimateOriginalPrice(product.price, product.condition);
     const saved = savingsPercent(product.price, originalPrice);
+    const stock = product.stock ?? 1;
+    const isOutOfStock = stock <= 0;
+    const addItem = useCartStore((state) => state.addItem);
+    const [added, setAdded] = useState(false);
+
+    const handleAddToCart = () => {
+        addItem({
+            productId: product.id,
+            title: product.title,
+            price: product.price,
+            imageUrl: product.imageUrl,
+            sellerId: product.seller.id,
+            sellerName,
+            availableStock: Math.max(0, stock),
+        });
+
+        setAdded(true);
+        setTimeout(() => setAdded(false), 1200);
+    };
 
     return (
-        <Link href={`/products/${product.id}`} className="block" style={{ textDecoration: 'none' }}>
-            <article className="card-hover" style={{ overflow: 'hidden' }}>
+        <article className="card-hover" style={{ overflow: 'hidden' }}>
+            <Link href={`/products/${product.id}`} className="block" style={{ textDecoration: 'none' }}>
                 <div style={{ position: 'relative', aspectRatio: '4 / 3', background: '#F3F4F6' }}>
                     <img
                         src={product.imageUrl}
@@ -63,9 +85,25 @@ export function ProductCard({ product }: { product: Product }) {
                         </div>
                         <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{sellerName}</span>
                     </div>
+
+                    <p style={{ margin: '8px 0 0', fontSize: 12, color: isOutOfStock ? '#B91C1C' : 'var(--text-muted)' }}>
+                        {isOutOfStock ? 'Out of stock' : `Stock: ${stock}`}
+                    </p>
                 </div>
-            </article>
-        </Link>
+            </Link>
+
+            <div style={{ padding: '0 12px 12px' }}>
+                <button
+                    type="button"
+                    onClick={handleAddToCart}
+                    className="btn-secondary"
+                    style={{ width: '100%' }}
+                    disabled={isOutOfStock}
+                >
+                    <ShoppingCart className="w-4 h-4" /> {isOutOfStock ? 'Out of Stock' : added ? 'Added' : 'Add to Cart'}
+                </button>
+            </div>
+        </article>
     );
 }
 

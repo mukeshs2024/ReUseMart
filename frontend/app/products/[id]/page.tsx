@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ArrowLeft, BadgeCheck, MessageSquare, ShoppingCart, User, X } from 'lucide-react';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/authStore';
+import { useCartStore } from '@/store/cartStore';
 import { isBuyerAccount, isSellerMode } from '@/lib/authMode';
 import {
     estimateOriginalPrice,
@@ -19,6 +20,7 @@ interface Product {
     title: string;
     description: string;
     price: number;
+    stock: number;
     imageUrl: string;
     condition?: string;
     createdAt: string;
@@ -41,6 +43,7 @@ export default function ProductDetailPage() {
     const [quantity, setQuantity] = useState(1);
     const [orderPlacedMessage, setOrderPlacedMessage] = useState('');
     const [paymentError, setPaymentError] = useState('');
+    const addItem = useCartStore((state) => state.addItem);
 
     useEffect(() => {
         api.get(`/products/${id}`)
@@ -70,6 +73,8 @@ export default function ProductDetailPage() {
     const condition = normalizeCondition(product.condition);
     const originalPrice = estimateOriginalPrice(product.price, product.condition);
     const savings = savingsPercent(product.price, originalPrice);
+    const availableStock = Math.max(0, product.stock ?? 0);
+    const isOutOfStock = availableStock <= 0;
     const isOwner = user?.id === product.seller.id;
     const ownerInSellerMode = isOwner && isSellerMode(user);
 
@@ -122,22 +127,55 @@ export default function ProductDetailPage() {
             alert('Seller has not generated a QR code yet.');
             return;
         }
+
+        if (isOutOfStock) {
+            alert('This product is out of stock.');
+            return;
+        }
+
         setQuantity(1);
         setShowPaymentModal(true);
     };
 
     const handleCompletePayment = async () => {
+        if (quantity > availableStock) {
+            setPaymentError(`Only ${availableStock} item(s) left in stock`);
+            return;
+        }
+
         setPaymentProcessing(true);
         setPaymentError('');
         try {
             const response = await api.post('/seller/orders', { productId: product.id, quantity });
             setShowPaymentModal(false);
             setOrderPlacedMessage(response.data?.message || 'Order placed successfully.');
+            setProduct((prev) => {
+                if (!prev) {
+                    return prev;
+                }
+
+                return {
+                    ...prev,
+                    stock: Math.max(0, prev.stock - quantity),
+                };
+            });
         } catch (err: any) {
             setPaymentError(err.response?.data?.error || 'Failed to place order');
         } finally {
             setPaymentProcessing(false);
         }
+    };
+
+    const handleAddToCart = () => {
+        addItem({
+            productId: product.id,
+            title: product.title,
+            price: product.price,
+            imageUrl: product.imageUrl,
+            sellerId: product.seller.id,
+            sellerName: product.seller.name,
+            availableStock,
+        });
     };
 
     return (
@@ -181,6 +219,9 @@ export default function ProductDetailPage() {
                             <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
                                 <span className="badge-condition">{condition}</span>
                                 <span className="badge-trust"><BadgeCheck className="w-3.5 h-3.5" /> Verified Seller</span>
+                                <span className="badge-condition" style={{ color: isOutOfStock ? '#B91C1C' : undefined }}>
+                                    {isOutOfStock ? 'Out of stock' : `Stock: ${availableStock}`}
+                                </span>
                             </div>
 
                             <div style={{ marginTop: 12, display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
@@ -205,11 +246,25 @@ export default function ProductDetailPage() {
                             {!isOwner ? (
                                 <div style={{ marginTop: 12, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                                     <button
+                                        className="btn-secondary"
+                                        style={{ flex: 1, minWidth: 150 }}
+                                        onClick={handleAddToCart}
+                                        disabled={isOutOfStock}
+                                    >
+                                        <ShoppingCart className="w-4 h-4" /> {isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
+                                    </button>
+                                    <button
                                         className="btn-primary"
                                         style={{ flex: 1, minWidth: 150 }}
                                         onClick={() => void openPaymentModal()}
-                                        disabled={!product.hasPaymentQr}
-                                        title={product.hasPaymentQr ? 'Pay via seller QR' : 'Seller has not added QR yet'}
+                                        disabled={!product.hasPaymentQr || isOutOfStock}
+                                        title={
+                                            isOutOfStock
+                                                ? 'This product is out of stock'
+                                                : product.hasPaymentQr
+                                                ? 'Pay via seller QR'
+                                                : 'Seller has not added QR yet'
+                                        }
                                     >
                                         <ShoppingCart className="w-4 h-4" /> Buy Now
                                     </button>
@@ -284,9 +339,9 @@ export default function ProductDetailPage() {
                                 <input
                                     type="number"
                                     min={1}
-                                    max={20}
+                                    max={Math.max(1, availableStock)}
                                     value={quantity}
-                                    onChange={(e) => setQuantity(Math.max(1, Math.min(20, Number(e.target.value || 1))))}
+                                    onChange={(e) => setQuantity(Math.max(1, Math.min(Math.max(1, availableStock), Number(e.target.value || 1))))}
                                     className="input-field"
                                 />
                             </div>
