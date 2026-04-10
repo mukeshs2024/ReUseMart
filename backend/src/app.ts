@@ -9,7 +9,52 @@ import messageRoutes from './routes/messages';
 
 const app = express();
 
+const getAllowedOrigins = (): string[] => {
+    return [
+        process.env.FRONTEND_URL,
+        'http://localhost:3000',
+        'http://localhost:3001',
+        'http://localhost:3002',
+    ].filter((origin): origin is string => Boolean(origin));
+};
+
+const isVercelPreviewOrigin = (origin: string): boolean => {
+    try {
+        const { hostname } = new URL(origin);
+        return hostname.endsWith('.vercel.app');
+    } catch {
+        return false;
+    }
+};
+
 // --- Middleware ---
+app.use((req: Request, res: Response, next: NextFunction) => {
+    const origin = req.headers.origin;
+    const allowedOrigins = getAllowedOrigins();
+    const isAllowedOrigin = !origin || allowedOrigins.includes(origin) || isVercelPreviewOrigin(origin);
+
+    if (origin && isAllowedOrigin) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Vary', 'Origin');
+    }
+
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    if (req.method === 'OPTIONS') {
+        res.status(204).end();
+        return;
+    }
+
+    if (!isAllowedOrigin && origin) {
+        res.status(403).json({ error: 'Origin not allowed' });
+        return;
+    }
+
+    next();
+});
+
 app.use(express.json());
 
 // --- Routes ---
