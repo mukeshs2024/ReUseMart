@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react';
-import api from '@/lib/axios';
 import { useCartStore } from '@/store/cartStore';
 import { useAuthStore } from '@/store/authStore';
 import { isBuyerAccount, isSellerMode } from '@/lib/authMode';
@@ -18,66 +17,11 @@ export default function CartPage() {
     const updateQuantity = useCartStore((state) => state.updateQuantity);
     const clearCart = useCartStore((state) => state.clearCart);
 
-    const [checkingOut, setCheckingOut] = useState(false);
     const [error, setError] = useState('');
-    const [success, setSuccess] = useState('');
 
     const totalItems = useMemo(() => items.reduce((sum, item) => sum + item.quantity, 0), [items]);
     const totalAmount = useMemo(() => items.reduce((sum, item) => sum + item.price * item.quantity, 0), [items]);
     const hasOutOfStockItems = useMemo(() => items.some((item) => item.availableStock <= 0), [items]);
-
-    const handleCheckout = async () => {
-        if (items.length === 0) {
-            return;
-        }
-
-        if (hasOutOfStockItems) {
-            setError('Some cart items are out of stock. Remove them before checkout.');
-            return;
-        }
-
-        if (!isAuthenticated) {
-            router.push('/login');
-            return;
-        }
-
-        if (!isBuyerAccount(user)) {
-            setError('Your account is not eligible for buyer checkout right now.');
-            return;
-        }
-
-        if (isSellerMode(user)) {
-            setError('Switch to BUYER mode from your profile menu before checkout.');
-            return;
-        }
-
-        setCheckingOut(true);
-        setError('');
-        setSuccess('');
-
-        let placedOrders = 0;
-
-        for (const item of items) {
-            try {
-                await api.post('/seller/orders', {
-                    productId: item.productId,
-                    quantity: item.quantity,
-                });
-                removeItem(item.productId);
-                placedOrders += 1;
-            } catch (err: any) {
-                const message = err.response?.data?.error || `Failed to place order for ${item.title}`;
-                setError(message);
-                break;
-            }
-        }
-
-        if (placedOrders > 0) {
-            setSuccess(`${placedOrders} order${placedOrders > 1 ? 's' : ''} placed successfully.`);
-        }
-
-        setCheckingOut(false);
-    };
 
     return (
         <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', paddingTop: 92, paddingBottom: 24 }}>
@@ -95,17 +39,6 @@ export default function CartPage() {
                 {error && (
                     <div className="card" style={{ padding: 12, marginBottom: 12, borderColor: 'rgba(185, 28, 28, 0.3)', background: 'rgba(254, 242, 242, 0.8)' }}>
                         <p style={{ margin: 0, color: '#B91C1C', fontWeight: 600 }}>{error}</p>
-                    </div>
-                )}
-
-                {success && (
-                    <div className="card" style={{ padding: 12, marginBottom: 12, borderColor: 'rgba(22, 101, 52, 0.25)', background: 'rgba(240, 253, 244, 0.9)' }}>
-                        <p style={{ margin: 0, color: '#166534', fontWeight: 600 }}>{success}</p>
-                        <div style={{ marginTop: 8 }}>
-                            <Link href="/profile" style={{ color: 'var(--accent-primary)', fontWeight: 600, textDecoration: 'none' }}>
-                                View purchase history
-                            </Link>
-                        </div>
                     </div>
                 )}
 
@@ -193,11 +126,11 @@ export default function CartPage() {
                                 </div>
                             </div>
 
-                            <button className="btn-primary" style={{ width: '100%', marginTop: 14 }} onClick={() => void handleCheckout()} disabled={checkingOut || hasOutOfStockItems}>
-                                {checkingOut ? 'Placing orders...' : 'Checkout'}
+                            <button className="btn-primary" style={{ width: '100%', marginTop: 14 }} onClick={() => router.push('/checkout')} disabled={items.length === 0}>
+                                Proceed to Checkout
                             </button>
 
-                            <button className="btn-secondary" style={{ width: '100%', marginTop: 8 }} onClick={clearCart} disabled={checkingOut}>
+                            <button className="btn-secondary" style={{ width: '100%', marginTop: 8 }} onClick={clearCart}>
                                 Clear Cart
                             </button>
                         </aside>

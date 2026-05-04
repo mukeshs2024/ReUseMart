@@ -22,11 +22,10 @@ import { getActiveMarketplaceMode, isSellerAccount, isSellerMode } from '@/lib/a
 import api from '@/lib/axios';
 import { disconnectChatSocket, getChatSocket, type LiveChatMessage } from '@/lib/chatSocket';
 
-const BUYER_LINKS = [
-    { href: '/', label: 'Home', icon: null },
-    { href: '/products', label: 'All Products', icon: null },
-    { href: '/profile', label: 'Profile', icon: UserCircle2 },
-    { href: '/messages', label: 'Messages', icon: Inbox },
+const NAV_LINKS = [
+    { href: '/products', label: 'Products' },
+    { href: '/categories', label: 'Categories' },
+    { href: '/help', label: 'Help' },
 ];
 
 const SELLER_LINKS = [
@@ -53,7 +52,7 @@ export function Navbar() {
     const isSeller = isSellerAccount(user);
     const activeMode = getActiveMarketplaceMode(user);
     const sellerModeActive = isSellerMode(user);
-    const navLinks = sellerModeActive ? SELLER_LINKS : BUYER_LINKS;
+    const navLinks = sellerModeActive ? SELLER_LINKS : NAV_LINKS;
 
     const isAdminPage = pathname?.startsWith('/admin');
     const isAuthPage = pathname === '/login' || pathname === '/register' || pathname === '/admin-secret-login';

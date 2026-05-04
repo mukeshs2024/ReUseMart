@@ -20,6 +20,19 @@ const conversationParamsSchema = z.object({
     otherUserId: z.string().uuid('Invalid user ID'),
 });
 
+const getErrorCode = (error: unknown): string | null => {
+    if (!error || typeof error !== 'object') {
+        return null;
+    }
+
+    if (!('code' in error)) {
+        return null;
+    }
+
+    const code = (error as { code?: unknown }).code;
+    return typeof code === 'string' ? code : null;
+};
+
 const isIncomingForUser = (message: { senderType: 'BUYER' | 'SELLER'; buyerId: string; sellerId: string }, userId: string) => {
     if (message.senderType === 'BUYER') {
         return message.sellerId === userId;
@@ -119,26 +132,46 @@ export async function getInbox(req: AuthRequest, res: Response) {
 // GET /api/messages/inbox/unread-count — for badge
 export async function getUnreadCount(req: AuthRequest, res: Response) {
     const sellerId = req.user!.id;
-    const count = await prisma.message.count({
-        where: { sellerId, senderType: 'BUYER', isRead: false },
-    });
-    return res.json({ count });
+    try {
+        const count = await prisma.message.count({
+            where: { sellerId, senderType: 'BUYER', isRead: false },
+        });
+        return res.json({ count });
+    } catch (error) {
+        if (getErrorCode(error) === 'P1001') {
+            console.warn('[messages/getUnreadCount] Database temporarily unreachable. Returning fallback count=0.');
+            return res.json({ count: 0, degraded: true });
+        }
+
+        console.error('[messages/getUnreadCount] Failed to get unread count:', error);
+        return res.status(500).json({ error: 'Failed to get unread count' });
+    }
 }
 
 // GET /api/messages/unread-count — generic unread count for both buyers and sellers
 export async function getUnreadCountForUser(req: AuthRequest, res: Response) {
     const userId = req.user!.id;
-    const count = await prisma.message.count({
-        where: {
-            isRead: false,
-            OR: [
-                { sellerId: userId, senderType: 'BUYER' },
-                { buyerId: userId, senderType: 'SELLER' },
-            ],
-        },
-    });
+    try {
+        const count = await prisma.message.count({
+            where: {
+                isRead: false,
+                OR: [
+                    { sellerId: userId, senderType: 'BUYER' },
+                    { buyerId: userId, senderType: 'SELLER' },
+                ],
+            },
+        });
 
-    return res.json({ count });
+        return res.json({ count });
+    } catch (error) {
+        if (getErrorCode(error) === 'P1001') {
+            console.warn('[messages/getUnreadCountForUser] Database temporarily unreachable. Returning fallback count=0.');
+            return res.json({ count: 0, degraded: true });
+        }
+
+        console.error('[messages/getUnreadCountForUser] Failed to get unread count:', error);
+        return res.status(500).json({ error: 'Failed to get unread count' });
+    }
 }
 
 // GET /api/messages/sent — buyer sees their sent messages

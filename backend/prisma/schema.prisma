@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -30,32 +31,14 @@ enum UserType {
   BOTH
 }
 
-model User {
-  id               String      @id @default(uuid())
-  name             String
-  email            String      @unique
-  password         String
-  role             Role        @default(USER)
-  userType         UserType    @default(BUYER)
-  isSeller         Boolean     @default(false)
-  phone            String?
-  isPhoneVerified  Boolean     @default(false)
-  trustScore       Int         @default(0)
-  sellerLevel      SellerLevel @default(BASIC)
-  activeMode       ActiveMode  @default(BUYER)
-  avatarUrl        String?
-  createdAt        DateTime    @default(now())
-  products         Product[]
-  sentMessages     Message[]   @relation("BuyerMessages")
-  receivedMessages Message[]   @relation("SellerMessages")
-  buyerOrders      Order[]     @relation("BuyerOrders")
-  sellerOrders     Order[]     @relation("SellerOrders")
-}
-
 enum OrderStatus {
-  PENDING
+  PLACED
   COMPLETED
   CANCELLED
+}
+
+enum PaymentMethod {
+  QR
 }
 
 enum ProductCategory {
@@ -73,53 +56,151 @@ enum ProductCondition {
   TOO_OLD
 }
 
-model Product {
-  id          String    @id @default(uuid())
-  title       String
-  description String
-  price       Float
-  stock       Int       @default(1)
-  category    ProductCategory @default(ELECTRONICS)
-  condition   ProductCondition @default(USED)
-  imageUrl    String
-  sellerId    String
-  seller      User      @relation(fields: [sellerId], references: [id], onDelete: Cascade)
-  paymentQrCode String?   // QR code image URL
-  paymentQrText  String?   // Data encoded in QR
-  createdAt   DateTime  @default(now())
-  messages    Message[]
-  orders      Order[]
-}
-
-model Order {
-  id        String      @id @default(uuid())
-  productId String
-  buyerId   String
-  sellerId  String
-  quantity  Int         @default(1)
-  amount    Float
-  status    OrderStatus @default(PENDING)
-  createdAt DateTime    @default(now())
-  product   Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
-  buyer     User        @relation("BuyerOrders", fields: [buyerId], references: [id], onDelete: Cascade)
-  seller    User        @relation("SellerOrders", fields: [sellerId], references: [id], onDelete: Cascade)
-}
-
-model Message {
-  id        String   @id @default(uuid())
-  content   String
-  senderType MessageSender @default(BUYER)
-  buyerId   String
-  sellerId  String
-  productId String
-  isRead    Boolean  @default(false)
-  createdAt DateTime @default(now())
-  buyer     User     @relation("BuyerMessages", fields: [buyerId], references: [id], onDelete: Cascade)
-  seller    User     @relation("SellerMessages", fields: [sellerId], references: [id], onDelete: Cascade)
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+enum OfferStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
 }
 
 enum MessageSender {
   BUYER
   SELLER
+}
+
+model User {
+  id                 String      @id @default(uuid())
+  name               String
+  email              String      @unique
+  password           String
+  role               Role        @default(USER)
+  userType           UserType    @default(BUYER)
+  isSeller           Boolean     @default(false)
+  phone              String?
+  isPhoneVerified    Boolean     @default(false)
+  trustScore         Int         @default(0)
+  sellerLevel        SellerLevel @default(BASIC)
+  activeMode         ActiveMode  @default(BUYER)
+  avatarUrl          String?
+  createdAt          DateTime    @default(now())
+  products           Product[]
+  sentMessages       Message[]   @relation("BuyerMessages")
+  receivedMessages   Message[]   @relation("SellerMessages")
+  buyerOrders        Order[]     @relation("BuyerOrders")
+  primarySellerOrders Order[]     @relation("PrimarySellerOrders")
+  soldOrderItems     OrderItem[] @relation("SellerOrderItems")
+  buyerOffers        Offer[]     @relation("offer_buyer")
+  sellerOffers       Offer[]     @relation("offer_seller")
+  buyerRatings       Rating[]    @relation("rating_buyer")
+  sellerRatings      Rating[]    @relation("rating_seller")
+}
+
+model Product {
+  id            String           @id @default(uuid())
+  title         String
+  description   String
+  price         Float
+  stock         Int              @default(1)
+  usageYears    Int              @default(0)
+  category      ProductCategory  @default(ELECTRONICS)
+  condition     ProductCondition @default(USED)
+  imageUrl      String
+  sellerId      String
+  paymentQrCode String?
+  paymentQrText String?
+  createdAt     DateTime         @default(now())
+
+  seller        User             @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  messages      Message[]
+  orderItems    OrderItem[]
+  offers        Offer[]
+  ratings       Rating[]
+}
+
+model Offer {
+  id        String      @id @default(uuid())
+  productId String
+  buyerId   String
+  sellerId  String
+  price     Float
+  message   String?
+  status    OfferStatus @default(PENDING)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  product   Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  buyer     User        @relation("offer_buyer", fields: [buyerId], references: [id], onDelete: Cascade)
+  seller    User        @relation("offer_seller", fields: [sellerId], references: [id], onDelete: Cascade)
+}
+
+model Rating {
+  id        String   @id @default(uuid())
+  productId String?
+  buyerId   String
+  sellerId  String?
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+
+  buyer     User     @relation("rating_buyer", fields: [buyerId], references: [id], onDelete: Cascade)
+  product   Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
+  seller    User?    @relation("rating_seller", fields: [sellerId], references: [id], onDelete: Cascade)
+}
+
+model Order {
+  id              String        @id @default(uuid())
+  buyerId         String
+  totalAmount     Float
+  status          OrderStatus   @default(PLACED)
+  paymentMethod   PaymentMethod
+  addressId       String        @unique
+  primarySellerId String?
+  createdAt       DateTime      @default(now())
+
+  buyer           User          @relation("BuyerOrders", fields: [buyerId], references: [id], onDelete: Cascade)
+  address         Address       @relation(fields: [addressId], references: [id], onDelete: Cascade)
+  primarySeller   User?         @relation("PrimarySellerOrders", fields: [primarySellerId], references: [id], onDelete: SetNull)
+  items           OrderItem[]
+}
+
+model Address {
+  id            String   @id @default(uuid())
+  fullName      String
+  phoneNumber   String
+  streetAddress String
+  city          String
+  state         String
+  pincode       String
+  createdAt     DateTime @default(now())
+
+  order         Order?
+}
+
+model OrderItem {
+  id        String   @id @default(uuid())
+  orderId   String
+  productId String
+  sellerId  String
+  quantity  Int
+  unitPrice Float
+  lineTotal Float
+  createdAt DateTime @default(now())
+
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  seller    User     @relation("SellerOrderItems", fields: [sellerId], references: [id], onDelete: Cascade)
+}
+
+model Message {
+  id         String        @id @default(uuid())
+  content    String
+  senderType MessageSender @default(BUYER)
+  buyerId    String
+  sellerId   String
+  productId  String
+  isRead     Boolean       @default(false)
+  createdAt  DateTime      @default(now())
+
+  buyer      User          @relation("BuyerMessages", fields: [buyerId], references: [id], onDelete: Cascade)
+  seller     User          @relation("SellerMessages", fields: [sellerId], references: [id], onDelete: Cascade)
+  product    Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
 }

@@ -142,6 +142,8 @@ exports.Prisma.ProductScalarFieldEnum = {
   title: 'title',
   description: 'description',
   price: 'price',
+  stock: 'stock',
+  usageYears: 'usageYears',
   category: 'category',
   condition: 'condition',
   imageUrl: 'imageUrl',
@@ -151,14 +153,58 @@ exports.Prisma.ProductScalarFieldEnum = {
   createdAt: 'createdAt'
 };
 
-exports.Prisma.OrderScalarFieldEnum = {
+exports.Prisma.OfferScalarFieldEnum = {
   id: 'id',
   productId: 'productId',
   buyerId: 'buyerId',
   sellerId: 'sellerId',
-  quantity: 'quantity',
-  amount: 'amount',
+  price: 'price',
+  message: 'message',
   status: 'status',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.RatingScalarFieldEnum = {
+  id: 'id',
+  productId: 'productId',
+  buyerId: 'buyerId',
+  sellerId: 'sellerId',
+  rating: 'rating',
+  comment: 'comment',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.OrderScalarFieldEnum = {
+  id: 'id',
+  buyerId: 'buyerId',
+  totalAmount: 'totalAmount',
+  status: 'status',
+  paymentMethod: 'paymentMethod',
+  addressId: 'addressId',
+  primarySellerId: 'primarySellerId',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.AddressScalarFieldEnum = {
+  id: 'id',
+  fullName: 'fullName',
+  phoneNumber: 'phoneNumber',
+  streetAddress: 'streetAddress',
+  city: 'city',
+  state: 'state',
+  pincode: 'pincode',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.OrderItemScalarFieldEnum = {
+  id: 'id',
+  orderId: 'orderId',
+  productId: 'productId',
+  sellerId: 'sellerId',
+  quantity: 'quantity',
+  unitPrice: 'unitPrice',
+  lineTotal: 'lineTotal',
   createdAt: 'createdAt'
 };
 
@@ -225,10 +271,20 @@ exports.ProductCondition = exports.$Enums.ProductCondition = {
   TOO_OLD: 'TOO_OLD'
 };
 
-exports.OrderStatus = exports.$Enums.OrderStatus = {
+exports.OfferStatus = exports.$Enums.OfferStatus = {
   PENDING: 'PENDING',
+  ACCEPTED: 'ACCEPTED',
+  DECLINED: 'DECLINED'
+};
+
+exports.OrderStatus = exports.$Enums.OrderStatus = {
+  PLACED: 'PLACED',
   COMPLETED: 'COMPLETED',
   CANCELLED: 'CANCELLED'
+};
+
+exports.PaymentMethod = exports.$Enums.PaymentMethod = {
+  QR: 'QR'
 };
 
 exports.MessageSender = exports.$Enums.MessageSender = {
@@ -239,7 +295,11 @@ exports.MessageSender = exports.$Enums.MessageSender = {
 exports.Prisma.ModelName = {
   User: 'User',
   Product: 'Product',
+  Offer: 'Offer',
+  Rating: 'Rating',
   Order: 'Order',
+  Address: 'Address',
+  OrderItem: 'OrderItem',
   Message: 'Message'
 };
 

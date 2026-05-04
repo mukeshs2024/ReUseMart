@@ -21,6 +21,7 @@ interface Product {
     description: string;
     price: number;
     stock: number;
+    usageYears: number;
     imageUrl: string;
     condition?: string;
     createdAt: string;
@@ -43,6 +44,11 @@ export default function ProductDetailPage() {
     const [quantity, setQuantity] = useState(1);
     const [orderPlacedMessage, setOrderPlacedMessage] = useState('');
     const [paymentError, setPaymentError] = useState('');
+    const [offerOpen, setOfferOpen] = useState(false);
+    const [offerPrice, setOfferPrice] = useState('');
+    const [offerMessage, setOfferMessage] = useState('');
+    const [offerSubmitting, setOfferSubmitting] = useState(false);
+    const [descExpanded, setDescExpanded] = useState(false);
     const addItem = useCartStore((state) => state.addItem);
 
     useEffect(() => {
@@ -74,6 +80,7 @@ export default function ProductDetailPage() {
     const originalPrice = estimateOriginalPrice(product.price, product.condition);
     const savings = savingsPercent(product.price, originalPrice);
     const availableStock = Math.max(0, product.stock ?? 0);
+    const usageYears = product.usageYears ?? 0;
     const isOutOfStock = availableStock <= 0;
     const isOwner = user?.id === product.seller.id;
     const ownerInSellerMode = isOwner && isSellerMode(user);
@@ -117,14 +124,50 @@ export default function ProductDetailPage() {
         }
     };
 
-    const openPaymentModal = async () => {
-        const canContinue = ensureBuyerMode();
-        if (!canContinue) {
+    const handleWhatsAppShare = () => {
+        if (!product) return;
+        const url = typeof window !== 'undefined' ? window.location.href : '';
+        const msg = `Hey! Check out this ${product.title} on ReUseMart for ₹${product.price}. Condition: ${product.condition || ''}. Link: ${url}`;
+        const encoded = encodeURIComponent(msg);
+        const waUrl = /Android|iPhone|iPad|iPod|IEMobile|Opera Mini/i.test(navigator.userAgent)
+            ? `whatsapp://send?text=${encoded}`
+            : `https://web.whatsapp.com/send?text=${encoded}`;
+        window.open(waUrl, '_blank');
+    };
+
+    const handleOpenOffer = () => {
+        if (!ensureBuyerMode()) return;
+        setOfferOpen(true);
+    };
+
+    const submitOffer = async () => {
+        if (!product) return;
+        if (!offerPrice || Number(offerPrice) <= 0) {
+            alert('Enter a valid offer price');
             return;
         }
 
-        if (!product.hasPaymentQr) {
-            alert('Seller has not generated a QR code yet.');
+        setOfferSubmitting(true);
+        try {
+            await api.post('/offers', {
+                productId: product.id,
+                price: Number(offerPrice),
+                message: offerMessage,
+            });
+            alert('Offer submitted');
+            setOfferOpen(false);
+            setOfferPrice('');
+            setOfferMessage('');
+        } catch (err: any) {
+            alert(err.response?.data?.error || 'Failed to submit offer');
+        } finally {
+            setOfferSubmitting(false);
+        }
+    };
+
+    const handleBuyNow = async () => {
+        const canContinue = ensureBuyerMode();
+        if (!canContinue) {
             return;
         }
 
@@ -133,37 +176,17 @@ export default function ProductDetailPage() {
             return;
         }
 
-        setQuantity(1);
-        setShowPaymentModal(true);
-    };
+        addItem({
+            productId: product.id,
+            title: product.title,
+            price: product.price,
+            imageUrl: product.imageUrl,
+            sellerId: product.seller.id,
+            sellerName: product.seller.name,
+            availableStock,
+        }, quantity);
 
-    const handleCompletePayment = async () => {
-        if (quantity > availableStock) {
-            setPaymentError(`Only ${availableStock} item(s) left in stock`);
-            return;
-        }
-
-        setPaymentProcessing(true);
-        setPaymentError('');
-        try {
-            const response = await api.post('/seller/orders', { productId: product.id, quantity });
-            setShowPaymentModal(false);
-            setOrderPlacedMessage(response.data?.message || 'Order placed successfully.');
-            setProduct((prev) => {
-                if (!prev) {
-                    return prev;
-                }
-
-                return {
-                    ...prev,
-                    stock: Math.max(0, prev.stock - quantity),
-                };
-            });
-        } catch (err: any) {
-            setPaymentError(err.response?.data?.error || 'Failed to place order');
-        } finally {
-            setPaymentProcessing(false);
-        }
+        router.push('/checkout');
     };
 
     const handleAddToCart = () => {
@@ -175,12 +198,21 @@ export default function ProductDetailPage() {
             sellerId: product.seller.id,
             sellerName: product.seller.name,
             availableStock,
-        });
+        }, quantity);
     };
 
     return (
         <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', paddingTop: 92, paddingBottom: 20 }}>
             <div className="page-container">
+                {/* Breadcrumb */}
+                <nav style={{ marginBottom: 16, fontSize: 14, color: 'var(--text-secondary)' }}>
+                    <Link href="/products" style={{ color: 'var(--accent-primary)', textDecoration: 'none' }}>Products</Link>
+                    <span style={{ margin: '0 8px' }}>›</span>
+                    <span>{normalizeCondition(product?.condition)}</span>
+                    <span style={{ margin: '0 8px' }}>›</span>
+                    <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{product?.title}</span>
+                </nav>
+
                 <Link href="/products" style={{ textDecoration: 'none', color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 14, marginBottom: 12 }}>
                     <ArrowLeft className="w-4 h-4" /> Back to listings
                 </Link>
@@ -224,6 +256,10 @@ export default function ProductDetailPage() {
                                 </span>
                             </div>
 
+                            <p style={{ margin: '10px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
+                                {usageYears > 0 ? `Used for: ${usageYears} ${usageYears === 1 ? 'year' : 'years'}` : 'Usage not specified'}
+                            </p>
+
                             <div style={{ marginTop: 12, display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
                                 <span style={{ fontSize: 32, fontWeight: 800 }}>{formatCurrency(product.price)}</span>
                                 <span style={{ fontSize: 15, color: 'var(--text-muted)', textDecoration: 'line-through' }}>{formatCurrency(originalPrice)}</span>
@@ -231,20 +267,120 @@ export default function ProductDetailPage() {
                             </div>
 
                             <div className="card" style={{ marginTop: 12, padding: 12, background: '#F8FAFF' }}>
-                                <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                                    {product.description || 'Seller has not added extra description.'}
-                                </p>
+                                <div style={{ marginBottom: 10 }}>
+                                    {descExpanded ? product.description : product.description?.substring(0, 200)}
+                                    {product.description && product.description.length > 200 && (
+                                        <button
+                                            onClick={() => setDescExpanded(!descExpanded)}
+                                            style={{
+                                                background: 'none',
+                                                border: 'none',
+                                                color: 'var(--accent-primary)',
+                                                cursor: 'pointer',
+                                                fontWeight: 600,
+                                                fontSize: 13,
+                                                marginTop: 8,
+                                            }}
+                                        >
+                                            {descExpanded ? 'Show less' : 'Show more'}
+                                        </button>
+                                    )}
+                                </div>
+                                {product.description?.includes('◆') && (
+                                    <div style={{ marginTop: 10, display: 'grid', gap: 8 }}>
+                                        {product.description?.split('◆').filter((s: string) => s.trim()).map((bullet: string, i: number) => (
+                                            <div key={i} style={{ display: 'flex', gap: 8, fontSize: 13 }}>
+                                                <span style={{ color: 'var(--accent-secondary)', fontWeight: 700 }}>•</span>
+                                                <span style={{ color: 'var(--text-secondary)' }}>{bullet.trim()}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
 
                             <div className="card" style={{ marginTop: 12, padding: 12 }}>
-                                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Seller Information</p>
-                                <div style={{ display: 'grid', gap: 4, fontSize: 14 }}>
-                                    <p style={{ margin: 0, display: 'inline-flex', alignItems: 'center', gap: 6 }}><User className="w-4 h-4" /> {product.seller.name}</p>
+                                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, marginBottom: 8 }}>Condition Breakdown</p>
+                                {product.conditionDetails && Array.isArray(product.conditionDetails) && product.conditionDetails.length > 0 ? (
+                                    <div style={{ display: 'grid', gap: 6 }}>
+                                        {(product.conditionDetails as string[]).map((item) => (
+                                            <div key={item} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                <span style={{ color: '#10B981' }}>✔</span>
+                                                <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{item}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)' }}>Seller did not provide a condition breakdown.</p>
+                                )}
+                            </div>
+
+                            <div className="card" style={{ marginTop: 12, padding: 12 }}>
+                                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, marginBottom: 10 }}>Seller Information</p>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        width: 40,
+                                        height: 40,
+                                        borderRadius: '50%',
+                                        background: 'var(--accent-primary)',
+                                        color: 'white',
+                                        fontWeight: 700,
+                                        fontSize: 16,
+                                    }}>
+                                        {product.seller.name.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div>
+                                        <p style={{ margin: 0, fontWeight: 600 }}>{product.seller.name}</p>
+                                        {product.seller && (product.seller as any).trustScore !== undefined && (
+                                            <div style={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: 4,
+                                                fontSize: 12,
+                                                fontWeight: 600,
+                                                marginTop: 4,
+                                                padding: '2px 8px',
+                                                borderRadius: 12,
+                                                background: (product.seller as any).trustScore > 75 ? 'rgba(16,185,129,0.12)' : (product.seller as any).trustScore >= 40 ? 'rgba(250,204,21,0.08)' : 'rgba(239,68,68,0.06)',
+                                                color: (product.seller as any).trustScore > 75 ? '#047857' : (product.seller as any).trustScore >= 40 ? '#92400E' : '#7F1D1D',
+                                            }}>
+                                                ⭐ {(product.seller as any).trustScore} Trust Score
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 
                             {!isOwner ? (
-                                <div style={{ marginTop: 12, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                                <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
+                                    <div className="card" style={{ padding: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Quantity</span>
+                                        <div style={{ display: 'inline-flex', alignItems: 'center', border: '1px solid var(--border-color)', borderRadius: 8, overflow: 'hidden' }}>
+                                            <button className="nav-icon-btn" style={{ width: 36, height: 36 }} onClick={() => setQuantity((current) => Math.max(1, current - 1))}>
+                                                <span style={{ fontSize: 16, fontWeight: 700 }}>−</span>
+                                            </button>
+                                            <span style={{ minWidth: 44, textAlign: 'center', fontSize: 14, fontWeight: 700 }}>{quantity}</span>
+                                            <button className="nav-icon-btn" style={{ width: 36, height: 36 }} onClick={() => setQuantity((current) => Math.min(availableStock, current + 1))}>
+                                                <span style={{ fontSize: 16, fontWeight: 700 }}>+</span>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                                    <button onClick={handleWhatsAppShare} className="btn-secondary" style={{
+                                        minWidth: 150,
+                                        background: '#25D366',
+                                        color: 'white',
+                                        border: 'none',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: 8,
+                                    }}>
+                                        📱 Share on WhatsApp
+                                    </button>
                                     <button
                                         className="btn-secondary"
                                         style={{ flex: 1, minWidth: 150 }}
@@ -253,24 +389,33 @@ export default function ProductDetailPage() {
                                     >
                                         <ShoppingCart className="w-4 h-4" /> {isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
                                     </button>
+                                    <button onClick={handleOpenOffer} className="btn-secondary" style={{
+                                        flex: 1,
+                                        minWidth: 150,
+                                        background: '#1F2937',
+                                        color: 'white',
+                                        border: 'none',
+                                    }}>
+                                        Make an Offer
+                                    </button>
                                     <button
                                         className="btn-primary"
-                                        style={{ flex: 1, minWidth: 150 }}
-                                        onClick={() => void openPaymentModal()}
-                                        disabled={!product.hasPaymentQr || isOutOfStock}
-                                        title={
-                                            isOutOfStock
-                                                ? 'This product is out of stock'
-                                                : product.hasPaymentQr
-                                                ? 'Pay via seller QR'
-                                                : 'Seller has not added QR yet'
-                                        }
+                                        style={{
+                                            flex: 1,
+                                            minWidth: 150,
+                                            background: '#1D9E75',
+                                            color: 'white',
+                                        }}
+                                        onClick={() => void handleBuyNow()}
+                                        disabled={isOutOfStock}
+                                        title={isOutOfStock ? 'This product is out of stock' : 'Proceed to checkout'}
                                     >
                                         <ShoppingCart className="w-4 h-4" /> Buy Now
                                     </button>
                                     <button onClick={handleChat} disabled={sending} className="btn-secondary" style={{ flex: 1, minWidth: 150 }}>
                                         <MessageSquare className="w-4 h-4" /> {sending ? 'Sending...' : 'Chat with Seller'}
                                     </button>
+                                    </div>
                                 </div>
                             ) : ownerInSellerMode ? (
                                 <div style={{ marginTop: 12 }}>
@@ -288,6 +433,40 @@ export default function ProductDetailPage() {
                         </section>
                     </div>
                 </div>
+
+                        {/* Offer popup */}
+                        {offerOpen && (
+                            <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={() => setOfferOpen(false)}>
+                                <div className="card" style={{ width: '100%', maxWidth: 480, padding: 18 }} onClick={(e) => e.stopPropagation()}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Make an Offer</h3>
+                                        <button className="btn-secondary" onClick={() => setOfferOpen(false)} style={{ padding: 6 }}>
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    </div>
+
+                                    <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 8 }}>
+                                        Propose a price and an optional message to the seller.
+                                    </p>
+
+                                    <div style={{ marginTop: 10 }}>
+                                        <label className="input-label">Offer Price (₹)</label>
+                                        <input type="number" className="input-field" value={offerPrice} onChange={(e) => setOfferPrice(e.target.value)} />
+                                    </div>
+
+                                    <div style={{ marginTop: 10 }}>
+                                        <label className="input-label">Message (optional)</label>
+                                        <input type="text" className="input-field" value={offerMessage} onChange={(e) => setOfferMessage(e.target.value)} placeholder="Will pick up today" />
+                                    </div>
+
+                                    <div style={{ marginTop: 12 }}>
+                                        <button className="btn-primary" style={{ width: '100%' }} onClick={submitOffer} disabled={offerSubmitting}>
+                                            {offerSubmitting ? 'Submitting...' : 'Send Offer'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                 {showPaymentModal && (
                     <div

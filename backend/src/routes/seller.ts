@@ -15,9 +15,11 @@ import {
     deleteProduct,
     getSellerAnalytics,
     createOrder,
+    getBuyerOrderById,
     generateProductPaymentQr,
     getBuyerOrderHistory,
 } from '../controllers/seller.controller';
+import offersController from '../controllers/offers.controller';
 
 const router = Router();
 
@@ -60,6 +62,12 @@ router.get('/analytics', requireSeller, getSellerAnalytics);
 
 // Orders
 router.get('/orders/history', getBuyerOrderHistory);
+router.get('/orders/:id', getBuyerOrderById);
 router.post('/orders', requireBuyerMode, createOrder);
+
+// Seller offers management
+router.get('/offers', requireSeller, offersController.getSellerOffers);
+router.post('/offers/:id/accept', requireSeller, offersController.acceptOffer);
+router.post('/offers/:id/decline', requireSeller, offersController.declineOffer);
 
 export default router;

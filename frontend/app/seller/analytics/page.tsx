@@ -33,11 +33,10 @@ interface TopListing {
 
 interface RecentOrder {
     id: string;
-    amount: number;
-    quantity: number;
-    status: 'PENDING' | 'COMPLETED' | 'CANCELLED';
+    totalAmount: number;
+    status: 'PLACED' | 'COMPLETED' | 'CANCELLED';
     createdAt: string;
-    product: { id: string; title: string; imageUrl: string };
+    items: Array<{ quantity: number; product: { id: string; title: string; imageUrl: string } }>;
     buyer: { id: string; name: string };
 }
 
@@ -56,6 +55,7 @@ interface AnalyticsData {
 const COLORS = ['#22C55E', '#2563EB', '#EF4444', '#FF9500', '#8b5cf6'];
 
 const STATUS_STYLES: Record<string, React.CSSProperties> = {
+    PLACED:   { color: '#2563EB', background: 'rgba(37,99,235,0.1)' },
     COMPLETED: { color: '#22C55E', background: 'rgba(34,197,94,0.1)' },
     PENDING:   { color: '#FF9500', background: 'rgba(255,149,0,0.1)' },
     CANCELLED: { color: '#EF4444', background: 'rgba(239,68,68,0.1)' },
@@ -90,7 +90,7 @@ export default function SellerAnalyticsPage() {
         const socket = token ? getChatSocket(token) : null;
 
         const onOrderPlaced = (event: LiveOrderPlaced) => {
-            if (event.sellerId !== user?.id) {
+            if (event.primarySellerId !== user?.id) {
                 return;
             }
 
@@ -324,14 +324,14 @@ export default function SellerAnalyticsPage() {
                             {data.recentOrders.map((order) => (
                                 <div key={order.id} className="flex items-center justify-between px-6 py-3.5">
                                     <div className="flex flex-col gap-0.5">
-                                        <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{order.product.title}</span>
+                                        <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{order.items[0]?.product.title || 'Checkout order'}</span>
                                         <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                                            Buyer: {order.buyer.name} &middot; Qty: {order.quantity} &middot; {new Date(order.createdAt).toLocaleDateString()}
+                                            Buyer: {order.buyer.name} &middot; Qty: {order.items.reduce((sum, item) => sum + item.quantity, 0)} &middot; {new Date(order.createdAt).toLocaleDateString()}
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <span className="text-sm font-bold" style={{ color: '#22C55E' }}>
-                                            {formatCurrency(order.amount)}
+                                            {formatCurrency(order.totalAmount)}
                                         </span>
                                         <span className="text-xs font-semibold px-2.5 py-1 rounded-full uppercase tracking-wide"
                                             style={STATUS_STYLES[order.status] ?? STATUS_STYLES.PENDING}>

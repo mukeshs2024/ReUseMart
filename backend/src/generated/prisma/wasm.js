@@ -114,6 +114,8 @@ exports.Prisma.ProductScalarFieldEnum = {
   title: 'title',
   description: 'description',
   price: 'price',
+  stock: 'stock',
+  usageYears: 'usageYears',
   category: 'category',
   condition: 'condition',
   imageUrl: 'imageUrl',
@@ -123,14 +125,58 @@ exports.Prisma.ProductScalarFieldEnum = {
   createdAt: 'createdAt'
 };
 
-exports.Prisma.OrderScalarFieldEnum = {
+exports.Prisma.OfferScalarFieldEnum = {
   id: 'id',
   productId: 'productId',
   buyerId: 'buyerId',
   sellerId: 'sellerId',
-  quantity: 'quantity',
-  amount: 'amount',
+  price: 'price',
+  message: 'message',
   status: 'status',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.RatingScalarFieldEnum = {
+  id: 'id',
+  productId: 'productId',
+  buyerId: 'buyerId',
+  sellerId: 'sellerId',
+  rating: 'rating',
+  comment: 'comment',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.OrderScalarFieldEnum = {
+  id: 'id',
+  buyerId: 'buyerId',
+  totalAmount: 'totalAmount',
+  status: 'status',
+  paymentMethod: 'paymentMethod',
+  addressId: 'addressId',
+  primarySellerId: 'primarySellerId',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.AddressScalarFieldEnum = {
+  id: 'id',
+  fullName: 'fullName',
+  phoneNumber: 'phoneNumber',
+  streetAddress: 'streetAddress',
+  city: 'city',
+  state: 'state',
+  pincode: 'pincode',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.OrderItemScalarFieldEnum = {
+  id: 'id',
+  orderId: 'orderId',
+  productId: 'productId',
+  sellerId: 'sellerId',
+  quantity: 'quantity',
+  unitPrice: 'unitPrice',
+  lineTotal: 'lineTotal',
   createdAt: 'createdAt'
 };
 
@@ -183,9 +229,13 @@ exports.UserType = exports.$Enums.UserType = {
 };
 
 exports.OrderStatus = exports.$Enums.OrderStatus = {
-  PENDING: 'PENDING',
+  PLACED: 'PLACED',
   COMPLETED: 'COMPLETED',
   CANCELLED: 'CANCELLED'
+};
+
+exports.PaymentMethod = exports.$Enums.PaymentMethod = {
+  QR: 'QR'
 };
 
 exports.ProductCategory = exports.$Enums.ProductCategory = {
@@ -203,6 +253,12 @@ exports.ProductCondition = exports.$Enums.ProductCondition = {
   TOO_OLD: 'TOO_OLD'
 };
 
+exports.OfferStatus = exports.$Enums.OfferStatus = {
+  PENDING: 'PENDING',
+  ACCEPTED: 'ACCEPTED',
+  DECLINED: 'DECLINED'
+};
+
 exports.MessageSender = exports.$Enums.MessageSender = {
   BUYER: 'BUYER',
   SELLER: 'SELLER'
@@ -211,7 +267,11 @@ exports.MessageSender = exports.$Enums.MessageSender = {
 exports.Prisma.ModelName = {
   User: 'User',
   Product: 'Product',
+  Offer: 'Offer',
+  Rating: 'Rating',
   Order: 'Order',
+  Address: 'Address',
+  OrderItem: 'OrderItem',
   Message: 'Message'
 };
 /**
@@ -262,13 +322,13 @@ const config = {
       }
     }
   },
-  "inlineSchema": "generator client {\n  provider = \"prisma-client-js\"\n  output   = \"../src/generated/prisma\"\n}\n\ndatasource db {\n  provider = \"postgresql\"\n  url      = env(\"DATABASE_URL\")\n}\n\nenum Role {\n  USER\n  ADMIN\n}\n\nenum SellerLevel {\n  BASIC\n  VERIFIED\n  TRUSTED\n  PRO\n}\n\nenum ActiveMode {\n  BUYER\n  SELLER\n}\n\nenum UserType {\n  BUYER\n  SELLER\n  BOTH\n}\n\nmodel User {\n  id               String      @id @default(uuid())\n  name             String\n  email            String      @unique\n  password         String\n  role             Role        @default(USER)\n  userType         UserType    @default(BUYER)\n  isSeller         Boolean     @default(false)\n  phone            String?\n  isPhoneVerified  Boolean     @default(false)\n  trustScore       Int         @default(0)\n  sellerLevel      SellerLevel @default(BASIC)\n  activeMode       ActiveMode  @default(BUYER)\n  avatarUrl        String?\n  createdAt        DateTime    @default(now())\n  products         Product[]\n  sentMessages     Message[]   @relation(\"BuyerMessages\")\n  receivedMessages Message[]   @relation(\"SellerMessages\")\n  buyerOrders      Order[]     @relation(\"BuyerOrders\")\n  sellerOrders     Order[]     @relation(\"SellerOrders\")\n}\n\nenum OrderStatus {\n  PENDING\n  COMPLETED\n  CANCELLED\n}\n\nenum ProductCategory {\n  ELECTRONICS\n  MOBILES\n  FURNITURE\n  FASHION\n  ACCESSORIES\n}\n\nenum ProductCondition {\n  LIKE_NEW\n  USED\n  OLD\n  TOO_OLD\n}\n\nmodel Product {\n  id            String           @id @default(uuid())\n  title         String\n  description   String\n  price         Float\n  category      ProductCategory  @default(ELECTRONICS)\n  condition     ProductCondition @default(USED)\n  imageUrl      String\n  sellerId      String\n  seller        User             @relation(fields: [sellerId], references: [id], onDelete: Cascade)\n  paymentQrCode String? // QR code image URL\n  paymentQrText String? // Data encoded in QR\n  createdAt     DateTime         @default(now())\n  messages      Message[]\n  orders        Order[]\n}\n\nmodel Order {\n  id        String      @id @default(uuid())\n  productId String\n  buyerId   String\n  sellerId  String\n  quantity  Int         @default(1)\n  amount    Float\n  status    OrderStatus @default(PENDING)\n  createdAt DateTime    @default(now())\n  product   Product     @relation(fields: [productId], references: [id], onDelete: Cascade)\n  buyer     User        @relation(\"BuyerOrders\", fields: [buyerId], references: [id], onDelete: Cascade)\n  seller    User        @relation(\"SellerOrders\", fields: [sellerId], references: [id], onDelete: Cascade)\n}\n\nmodel Message {\n  id         String        @id @default(uuid())\n  content    String\n  senderType MessageSender @default(BUYER)\n  buyerId    String\n  sellerId   String\n  productId  String\n  isRead     Boolean       @default(false)\n  createdAt  DateTime      @default(now())\n  buyer      User          @relation(\"BuyerMessages\", fields: [buyerId], references: [id], onDelete: Cascade)\n  seller     User          @relation(\"SellerMessages\", fields: [sellerId], references: [id], onDelete: Cascade)\n  product    Product       @relation(fields: [productId], references: [id], onDelete: Cascade)\n}\n\nenum MessageSender {\n  BUYER\n  SELLER\n}\n",
-  "inlineSchemaHash": "ac3aeb73105c600e8ee1c7f2541f1f498626330d9a8e1fccd2621d99ae136c30",
+  "inlineSchema": "generator client {\n  provider = \"prisma-client-js\"\n  output   = \"../src/generated/prisma\"\n}\n\ndatasource db {\n  provider = \"postgresql\"\n  url      = env(\"DATABASE_URL\")\n}\n\nenum Role {\n  USER\n  ADMIN\n}\n\nenum SellerLevel {\n  BASIC\n  VERIFIED\n  TRUSTED\n  PRO\n}\n\nenum ActiveMode {\n  BUYER\n  SELLER\n}\n\nenum UserType {\n  BUYER\n  SELLER\n  BOTH\n}\n\nenum OrderStatus {\n  PLACED\n  COMPLETED\n  CANCELLED\n}\n\nenum PaymentMethod {\n  QR\n}\n\nenum ProductCategory {\n  ELECTRONICS\n  MOBILES\n  FURNITURE\n  FASHION\n  ACCESSORIES\n}\n\nenum ProductCondition {\n  LIKE_NEW\n  USED\n  OLD\n  TOO_OLD\n}\n\nenum OfferStatus {\n  PENDING\n  ACCEPTED\n  DECLINED\n}\n\nenum MessageSender {\n  BUYER\n  SELLER\n}\n\nmodel User {\n  id                  String      @id @default(uuid())\n  name                String\n  email               String      @unique\n  password            String\n  role                Role        @default(USER)\n  userType            UserType    @default(BUYER)\n  isSeller            Boolean     @default(false)\n  phone               String?\n  isPhoneVerified     Boolean     @default(false)\n  trustScore          Int         @default(0)\n  sellerLevel         SellerLevel @default(BASIC)\n  activeMode          ActiveMode  @default(BUYER)\n  avatarUrl           String?\n  createdAt           DateTime    @default(now())\n  products            Product[]\n  sentMessages        Message[]   @relation(\"BuyerMessages\")\n  receivedMessages    Message[]   @relation(\"SellerMessages\")\n  buyerOrders         Order[]     @relation(\"BuyerOrders\")\n  primarySellerOrders Order[]     @relation(\"PrimarySellerOrders\")\n  soldOrderItems      OrderItem[] @relation(\"SellerOrderItems\")\n  buyerOffers         Offer[]     @relation(\"offer_buyer\")\n  sellerOffers        Offer[]     @relation(\"offer_seller\")\n  buyerRatings        Rating[]    @relation(\"rating_buyer\")\n  sellerRatings       Rating[]    @relation(\"rating_seller\")\n}\n\nmodel Product {\n  id            String           @id @default(uuid())\n  title         String\n  description   String\n  price         Float\n  stock         Int              @default(1)\n  usageYears    Int              @default(0)\n  category      ProductCategory  @default(ELECTRONICS)\n  condition     ProductCondition @default(USED)\n  imageUrl      String\n  sellerId      String\n  paymentQrCode String?\n  paymentQrText String?\n  createdAt     DateTime         @default(now())\n\n  seller     User        @relation(fields: [sellerId], references: [id], onDelete: Cascade)\n  messages   Message[]\n  orderItems OrderItem[]\n  offers     Offer[]\n  ratings    Rating[]\n}\n\nmodel Offer {\n  id        String      @id @default(uuid())\n  productId String\n  buyerId   String\n  sellerId  String\n  price     Float\n  message   String?\n  status    OfferStatus @default(PENDING)\n  createdAt DateTime    @default(now())\n  updatedAt DateTime    @updatedAt\n\n  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)\n  buyer   User    @relation(\"offer_buyer\", fields: [buyerId], references: [id], onDelete: Cascade)\n  seller  User    @relation(\"offer_seller\", fields: [sellerId], references: [id], onDelete: Cascade)\n}\n\nmodel Rating {\n  id        String   @id @default(uuid())\n  productId String?\n  buyerId   String\n  sellerId  String?\n  rating    Int\n  comment   String?\n  createdAt DateTime @default(now())\n\n  buyer   User     @relation(\"rating_buyer\", fields: [buyerId], references: [id], onDelete: Cascade)\n  product Product? @relation(fields: [productId], references: [id], onDelete: Cascade)\n  seller  User?    @relation(\"rating_seller\", fields: [sellerId], references: [id], onDelete: Cascade)\n}\n\nmodel Order {\n  id              String        @id @default(uuid())\n  buyerId         String\n  totalAmount     Float\n  status          OrderStatus   @default(PLACED)\n  paymentMethod   PaymentMethod\n  addressId       String        @unique\n  primarySellerId String?\n  createdAt       DateTime      @default(now())\n\n  buyer         User        @relation(\"BuyerOrders\", fields: [buyerId], references: [id], onDelete: Cascade)\n  address       Address     @relation(fields: [addressId], references: [id], onDelete: Cascade)\n  primarySeller User?       @relation(\"PrimarySellerOrders\", fields: [primarySellerId], references: [id], onDelete: SetNull)\n  items         OrderItem[]\n}\n\nmodel Address {\n  id            String   @id @default(uuid())\n  fullName      String\n  phoneNumber   String\n  streetAddress String\n  city          String\n  state         String\n  pincode       String\n  createdAt     DateTime @default(now())\n\n  order Order?\n}\n\nmodel OrderItem {\n  id        String   @id @default(uuid())\n  orderId   String\n  productId String\n  sellerId  String\n  quantity  Int\n  unitPrice Float\n  lineTotal Float\n  createdAt DateTime @default(now())\n\n  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)\n  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)\n  seller  User    @relation(\"SellerOrderItems\", fields: [sellerId], references: [id], onDelete: Cascade)\n}\n\nmodel Message {\n  id         String        @id @default(uuid())\n  content    String\n  senderType MessageSender @default(BUYER)\n  buyerId    String\n  sellerId   String\n  productId  String\n  isRead     Boolean       @default(false)\n  createdAt  DateTime      @default(now())\n\n  buyer   User    @relation(\"BuyerMessages\", fields: [buyerId], references: [id], onDelete: Cascade)\n  seller  User    @relation(\"SellerMessages\", fields: [sellerId], references: [id], onDelete: Cascade)\n  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)\n}\n",
+  "inlineSchemaHash": "cb9f14da5eb3473ffa8cdf6a49fd03e82499ac2b0e7c3fc238ef0f3d6af61b7d",
   "copyEngine": true
 }
 config.dirname = '/'
 
-config.runtimeDataModel = JSON.parse("{\"models\":{\"User\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"name\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"email\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"password\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"role\",\"kind\":\"enum\",\"type\":\"Role\"},{\"name\":\"userType\",\"kind\":\"enum\",\"type\":\"UserType\"},{\"name\":\"isSeller\",\"kind\":\"scalar\",\"type\":\"Boolean\"},{\"name\":\"phone\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"isPhoneVerified\",\"kind\":\"scalar\",\"type\":\"Boolean\"},{\"name\":\"trustScore\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"sellerLevel\",\"kind\":\"enum\",\"type\":\"SellerLevel\"},{\"name\":\"activeMode\",\"kind\":\"enum\",\"type\":\"ActiveMode\"},{\"name\":\"avatarUrl\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"products\",\"kind\":\"object\",\"type\":\"Product\",\"relationName\":\"ProductToUser\"},{\"name\":\"sentMessages\",\"kind\":\"object\",\"type\":\"Message\",\"relationName\":\"BuyerMessages\"},{\"name\":\"receivedMessages\",\"kind\":\"object\",\"type\":\"Message\",\"relationName\":\"SellerMessages\"},{\"name\":\"buyerOrders\",\"kind\":\"object\",\"type\":\"Order\",\"relationName\":\"BuyerOrders\"},{\"name\":\"sellerOrders\",\"kind\":\"object\",\"type\":\"Order\",\"relationName\":\"SellerOrders\"}],\"dbName\":null},\"Product\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"title\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"description\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"price\",\"kind\":\"scalar\",\"type\":\"Float\"},{\"name\":\"category\",\"kind\":\"enum\",\"type\":\"ProductCategory\"},{\"name\":\"condition\",\"kind\":\"enum\",\"type\":\"ProductCondition\"},{\"name\":\"imageUrl\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"sellerId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"seller\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"ProductToUser\"},{\"name\":\"paymentQrCode\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"paymentQrText\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"messages\",\"kind\":\"object\",\"type\":\"Message\",\"relationName\":\"MessageToProduct\"},{\"name\":\"orders\",\"kind\":\"object\",\"type\":\"Order\",\"relationName\":\"OrderToProduct\"}],\"dbName\":null},\"Order\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"productId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"buyerId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"sellerId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"quantity\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"amount\",\"kind\":\"scalar\",\"type\":\"Float\"},{\"name\":\"status\",\"kind\":\"enum\",\"type\":\"OrderStatus\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"product\",\"kind\":\"object\",\"type\":\"Product\",\"relationName\":\"OrderToProduct\"},{\"name\":\"buyer\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"BuyerOrders\"},{\"name\":\"seller\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"SellerOrders\"}],\"dbName\":null},\"Message\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"content\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"senderType\",\"kind\":\"enum\",\"type\":\"MessageSender\"},{\"name\":\"buyerId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"sellerId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"productId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"isRead\",\"kind\":\"scalar\",\"type\":\"Boolean\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"buyer\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"BuyerMessages\"},{\"name\":\"seller\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"SellerMessages\"},{\"name\":\"product\",\"kind\":\"object\",\"type\":\"Product\",\"relationName\":\"MessageToProduct\"}],\"dbName\":null}},\"enums\":{},\"types\":{}}")
+config.runtimeDataModel = JSON.parse("{\"models\":{\"User\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"name\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"email\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"password\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"role\",\"kind\":\"enum\",\"type\":\"Role\"},{\"name\":\"userType\",\"kind\":\"enum\",\"type\":\"UserType\"},{\"name\":\"isSeller\",\"kind\":\"scalar\",\"type\":\"Boolean\"},{\"name\":\"phone\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"isPhoneVerified\",\"kind\":\"scalar\",\"type\":\"Boolean\"},{\"name\":\"trustScore\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"sellerLevel\",\"kind\":\"enum\",\"type\":\"SellerLevel\"},{\"name\":\"activeMode\",\"kind\":\"enum\",\"type\":\"ActiveMode\"},{\"name\":\"avatarUrl\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"products\",\"kind\":\"object\",\"type\":\"Product\",\"relationName\":\"ProductToUser\"},{\"name\":\"sentMessages\",\"kind\":\"object\",\"type\":\"Message\",\"relationName\":\"BuyerMessages\"},{\"name\":\"receivedMessages\",\"kind\":\"object\",\"type\":\"Message\",\"relationName\":\"SellerMessages\"},{\"name\":\"buyerOrders\",\"kind\":\"object\",\"type\":\"Order\",\"relationName\":\"BuyerOrders\"},{\"name\":\"primarySellerOrders\",\"kind\":\"object\",\"type\":\"Order\",\"relationName\":\"PrimarySellerOrders\"},{\"name\":\"soldOrderItems\",\"kind\":\"object\",\"type\":\"OrderItem\",\"relationName\":\"SellerOrderItems\"},{\"name\":\"buyerOffers\",\"kind\":\"object\",\"type\":\"Offer\",\"relationName\":\"offer_buyer\"},{\"name\":\"sellerOffers\",\"kind\":\"object\",\"type\":\"Offer\",\"relationName\":\"offer_seller\"},{\"name\":\"buyerRatings\",\"kind\":\"object\",\"type\":\"Rating\",\"relationName\":\"rating_buyer\"},{\"name\":\"sellerRatings\",\"kind\":\"object\",\"type\":\"Rating\",\"relationName\":\"rating_seller\"}],\"dbName\":null},\"Product\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"title\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"description\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"price\",\"kind\":\"scalar\",\"type\":\"Float\"},{\"name\":\"stock\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"usageYears\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"category\",\"kind\":\"enum\",\"type\":\"ProductCategory\"},{\"name\":\"condition\",\"kind\":\"enum\",\"type\":\"ProductCondition\"},{\"name\":\"imageUrl\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"sellerId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"paymentQrCode\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"paymentQrText\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"seller\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"ProductToUser\"},{\"name\":\"messages\",\"kind\":\"object\",\"type\":\"Message\",\"relationName\":\"MessageToProduct\"},{\"name\":\"orderItems\",\"kind\":\"object\",\"type\":\"OrderItem\",\"relationName\":\"OrderItemToProduct\"},{\"name\":\"offers\",\"kind\":\"object\",\"type\":\"Offer\",\"relationName\":\"OfferToProduct\"},{\"name\":\"ratings\",\"kind\":\"object\",\"type\":\"Rating\",\"relationName\":\"ProductToRating\"}],\"dbName\":null},\"Offer\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"productId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"buyerId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"sellerId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"price\",\"kind\":\"scalar\",\"type\":\"Float\"},{\"name\":\"message\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"status\",\"kind\":\"enum\",\"type\":\"OfferStatus\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"product\",\"kind\":\"object\",\"type\":\"Product\",\"relationName\":\"OfferToProduct\"},{\"name\":\"buyer\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"offer_buyer\"},{\"name\":\"seller\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"offer_seller\"}],\"dbName\":null},\"Rating\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"productId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"buyerId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"sellerId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"rating\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"comment\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"buyer\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"rating_buyer\"},{\"name\":\"product\",\"kind\":\"object\",\"type\":\"Product\",\"relationName\":\"ProductToRating\"},{\"name\":\"seller\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"rating_seller\"}],\"dbName\":null},\"Order\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"buyerId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"totalAmount\",\"kind\":\"scalar\",\"type\":\"Float\"},{\"name\":\"status\",\"kind\":\"enum\",\"type\":\"OrderStatus\"},{\"name\":\"paymentMethod\",\"kind\":\"enum\",\"type\":\"PaymentMethod\"},{\"name\":\"addressId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"primarySellerId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"buyer\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"BuyerOrders\"},{\"name\":\"address\",\"kind\":\"object\",\"type\":\"Address\",\"relationName\":\"AddressToOrder\"},{\"name\":\"primarySeller\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"PrimarySellerOrders\"},{\"name\":\"items\",\"kind\":\"object\",\"type\":\"OrderItem\",\"relationName\":\"OrderToOrderItem\"}],\"dbName\":null},\"Address\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"fullName\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"phoneNumber\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"streetAddress\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"city\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"state\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"pincode\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"order\",\"kind\":\"object\",\"type\":\"Order\",\"relationName\":\"AddressToOrder\"}],\"dbName\":null},\"OrderItem\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"orderId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"productId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"sellerId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"quantity\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"unitPrice\",\"kind\":\"scalar\",\"type\":\"Float\"},{\"name\":\"lineTotal\",\"kind\":\"scalar\",\"type\":\"Float\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"order\",\"kind\":\"object\",\"type\":\"Order\",\"relationName\":\"OrderToOrderItem\"},{\"name\":\"product\",\"kind\":\"object\",\"type\":\"Product\",\"relationName\":\"OrderItemToProduct\"},{\"name\":\"seller\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"SellerOrderItems\"}],\"dbName\":null},\"Message\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"content\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"senderType\",\"kind\":\"enum\",\"type\":\"MessageSender\"},{\"name\":\"buyerId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"sellerId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"productId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"isRead\",\"kind\":\"scalar\",\"type\":\"Boolean\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"buyer\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"BuyerMessages\"},{\"name\":\"seller\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"SellerMessages\"},{\"name\":\"product\",\"kind\":\"object\",\"type\":\"Product\",\"relationName\":\"MessageToProduct\"}],\"dbName\":null}},\"enums\":{},\"types\":{}}")
 defineDmmfProperty(exports.Prisma, config.runtimeDataModel)
 config.engineWasm = {
   getRuntime: async () => require('./query_engine_bg.js'),

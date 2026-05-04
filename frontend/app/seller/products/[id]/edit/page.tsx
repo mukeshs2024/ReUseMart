@@ -31,6 +31,7 @@ export default function EditProductPage() {
         description: '',
         price: '',
         stock: '1',
+        usageYears: '0',
         category: 'ELECTRONICS',
         condition: 'USED',
         imageUrl: '',
@@ -55,6 +56,7 @@ export default function EditProductPage() {
                     description: p.description,
                     price: String(p.price),
                     stock: String(p.stock ?? 1),
+                    usageYears: String(p.usageYears ?? 0),
                     category: p.category || 'ELECTRONICS',
                     condition: p.condition || 'USED',
                     imageUrl: p.imageUrl,
@@ -73,6 +75,7 @@ export default function EditProductPage() {
                 ...form,
                 price: parseFloat(form.price),
                 stock: parseInt(form.stock, 10),
+                usageYears: parseInt(form.usageYears, 10),
             });
             router.push('/seller/products');
         } catch (err: any) {
@@ -168,6 +171,19 @@ export default function EditProductPage() {
                             onChange={(e) => setForm({ ...form, stock: e.target.value })}
                             required
                             min="1"
+                            step="1"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="input-label">Used For (Years) *</label>
+                        <input
+                            type="number"
+                            className="input-field"
+                            value={form.usageYears}
+                            onChange={(e) => setForm({ ...form, usageYears: e.target.value })}
+                            required
+                            min="0"
                             step="1"
                         />
                     </div>

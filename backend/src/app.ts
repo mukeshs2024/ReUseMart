@@ -6,6 +6,7 @@ import productRoutes from './routes/products';
 import sellerRoutes from './routes/seller';
 import adminRoutes from './routes/admin';
 import messageRoutes from './routes/messages';
+import offersRoutes from './routes/offers';
 
 const app = express();
 
@@ -63,6 +64,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/seller', sellerRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/offers', offersRoutes);
 
 // --- Health check ---
 app.get('/api/health', (_req, res) => {

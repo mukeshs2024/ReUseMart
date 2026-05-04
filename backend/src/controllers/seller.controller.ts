@@ -55,9 +55,11 @@ const productSchema = z.object({
     description: z.string().min(10, 'Description must be at least 10 characters'),
     price: z.number().positive('Price must be a positive number'),
     stock: z.number().int().min(1, 'Stock must be at least 1').max(9999, 'Stock is too large'),
+    usageYears: z.number().int().min(0, 'Usage years cannot be negative').max(100, 'Usage years is too large'),
     category: z.enum(['ELECTRONICS', 'MOBILES', 'FURNITURE', 'FASHION', 'ACCESSORIES']),
     condition: z.enum(['LIKE_NEW', 'USED', 'OLD', 'TOO_OLD']),
     imageUrl: z.string().url('Image URL must be a valid URL'),
+    conditionDetails: z.array(z.string()).optional(),
 });
 
 const productUpdateSchema = productSchema.partial();
@@ -79,10 +81,68 @@ const generateQrSchema = z.object({
     paymentHandle: z.string().min(3).max(80).optional(),
 });
 
-const createOrderSchema = z.object({
+const checkoutItemSchema = z.object({
     productId: z.string().min(1, 'productId is required'),
-    quantity: z.number().int().min(1).max(20).optional(),
+    quantity: z.number().int().min(1).max(20),
 });
+
+const checkoutAddressSchema = z.object({
+    fullName: z.string().min(2, 'Full name is required'),
+    phoneNumber: z.string().regex(/^[0-9]{10,15}$/, 'Phone number must be valid'),
+    streetAddress: z.string().min(5, 'Street address is required'),
+    city: z.string().min(2, 'City is required'),
+    state: z.string().min(2, 'State is required'),
+    pincode: z.string().regex(/^[0-9]{4,10}$/, 'Pincode must be numeric'),
+});
+
+const createOrderSchema = z.object({
+    items: z.array(checkoutItemSchema).min(1, 'At least one cart item is required'),
+    deliveryAddress: checkoutAddressSchema,
+    paymentMethod: z.literal('QR'),
+    paymentConfirmed: z.literal(true),
+});
+
+const mapOrderForBuyerView = (order: {
+    id: string;
+    buyerId: string;
+    totalAmount: number;
+    status: string;
+    paymentMethod: string;
+    createdAt: Date;
+    address: {
+        id: string;
+        fullName: string;
+        phoneNumber: string;
+        streetAddress: string;
+        city: string;
+        state: string;
+        pincode: string;
+    };
+    items: Array<{
+        id: string;
+        quantity: number;
+        unitPrice: number;
+        lineTotal: number;
+        product: { id: string; title: string; imageUrl: string; price: number };
+        seller: { id: string; name: string };
+    }>;
+}) => {
+    const firstItem = order.items[0];
+
+    return {
+        id: order.id,
+        buyerId: order.buyerId,
+        totalAmount: order.totalAmount,
+        status: order.status,
+        paymentMethod: order.paymentMethod,
+        createdAt: order.createdAt,
+        address: order.address,
+        items: order.items,
+        product: firstItem?.product ?? null,
+        seller: firstItem?.seller ?? null,
+        quantity: order.items.reduce((sum, item) => sum + item.quantity, 0),
+    };
+};
 
 export const activateSeller = async (req: AuthRequest, res: Response): Promise<void> => {
     const userId = req.user!.id;
@@ -562,26 +622,65 @@ export const getTrustBadge = async (req: AuthRequest, res: Response): Promise<vo
             return;
         }
 
+        // Recalculate trust score based on completed orders, average rating, and response speed
+        const [completedOrdersCount, ratingAgg] = await Promise.all([
+            prisma.order.count({ where: { primarySellerId: userId, status: { not: 'CANCELLED' } } }),
+            prisma.rating.aggregate({ where: { sellerId: userId }, _avg: { rating: true } }),
+        ]);
+
+        const avgRating = ratingAgg._avg.rating ?? 0;
+
+        // Compute average seller response time (hours)
+        const recentMessages = await prisma.message.findMany({
+            where: { sellerId: userId },
+            orderBy: { createdAt: 'desc' },
+            take: 200,
+        });
+
+        // Build diffs where a buyer message is followed by a seller reply for same product
+        const diffs: number[] = [];
+        for (let i = recentMessages.length - 1; i >= 0; i--) {
+            const msg = recentMessages[i];
+            if (msg.senderType === 'SELLER') continue;
+            for (let j = i + 1; j < recentMessages.length; j++) {
+                const next = recentMessages[j];
+                if (next.senderType === 'SELLER' && next.buyerId === msg.buyerId && next.productId === msg.productId) {
+                    const diffMs = new Date(next.createdAt).getTime() - new Date(msg.createdAt).getTime();
+                    if (diffMs > 0) diffs.push(diffMs / (1000 * 60 * 60)); // hours
+                    break;
+                }
+            }
+        }
+
+        const avgResponseHours = diffs.length ? diffs.reduce((s, d) => s + d, 0) / diffs.length : Infinity;
+
+        // Scoring weights: orders 40, rating 40, response 20
+        const orderPoints = Math.min(40, completedOrdersCount * 2); // up to 40 points
+        const ratingPoints = (Math.min(5, avgRating) / 5) * 40; // scale to 40
+        let responsePoints = 0;
+        if (avgResponseHours === Infinity) responsePoints = 6; // small default if no data
+        else if (avgResponseHours <= 2) responsePoints = 20;
+        else if (avgResponseHours <= 12) responsePoints = 12;
+        else if (avgResponseHours <= 48) responsePoints = 6;
+        else responsePoints = 0;
+
+        const calculated = Math.round(orderPoints + ratingPoints + responsePoints);
+
+        // Persist calculated trust score (0-100)
+        const newScore = Math.max(0, Math.min(100, calculated));
+        await prisma.user.update({ where: { id: userId }, data: { trustScore: newScore } });
+
         const badge = {
             userType: user.userType,
             verified: user.isPhoneVerified,
-            trustScore: user.trustScore,
+            trustScore: newScore,
             level: user.sellerLevel,
             badges: [] as string[],
         };
 
-        // Determine badges based on trust score and level
-        if (user.isPhoneVerified) {
-            badge.badges.push('verified');
-        }
-
-        if (user.sellerLevel === 'TRUSTED' && user.trustScore >= 50) {
-            badge.badges.push('trusted-seller');
-        }
-
-        if (user.sellerLevel === 'PRO' && user.trustScore >= 80) {
-            badge.badges.push('pro-seller');
-        }
+        if (user.isPhoneVerified) badge.badges.push('verified');
+        if (user.sellerLevel === 'TRUSTED' && newScore >= 50) badge.badges.push('trusted-seller');
+        if (user.sellerLevel === 'PRO' && newScore >= 80) badge.badges.push('pro-seller');
 
         res.json(badge);
     } catch (err) {
@@ -633,28 +732,33 @@ export const getSellerAnalytics = async (req: AuthRequest, res: Response): Promi
             prisma.order.findMany({
                 // Count all non-cancelled orders so legacy pending rows still appear
                 // and newer completed rows are reflected immediately.
-                where: { sellerId, status: { not: 'CANCELLED' }, createdAt: { gte: sixMonthsAgo } },
-                select: { amount: true, createdAt: true },
+                where: { primarySellerId: sellerId, status: { not: 'CANCELLED' }, createdAt: { gte: sixMonthsAgo } },
+                select: { totalAmount: true, createdAt: true },
             }),
             prisma.order.findMany({
-                where: { sellerId, status: { not: 'CANCELLED' } },
+                where: { primarySellerId: sellerId, status: { not: 'CANCELLED' } },
                 select: {
-                    amount: true,
-                    quantity: true,
+                    totalAmount: true,
+                    items: { select: { quantity: true } },
                     buyer: { select: { id: true, name: true } },
                 },
             }),
             prisma.order.findMany({
-                where: { sellerId },
+                where: { primarySellerId: sellerId },
                 orderBy: { createdAt: 'desc' },
                 take: 5,
                 select: {
                     id: true,
-                    amount: true,
-                    quantity: true,
+                    totalAmount: true,
                     status: true,
                     createdAt: true,
-                    product: { select: { id: true, title: true, imageUrl: true } },
+                    items: {
+                        take: 1,
+                        select: {
+                            quantity: true,
+                            product: { select: { id: true, title: true, imageUrl: true } },
+                        },
+                    },
                     buyer: { select: { id: true, name: true } },
                 },
             }),
@@ -673,24 +777,24 @@ export const getSellerAnalytics = async (req: AuthRequest, res: Response): Promi
         for (const order of completedOrdersWindow) {
             const label = new Date(order.createdAt).toLocaleString('en-US', { month: 'short' });
             const entry = monthlyRevenue.find((m) => m.month === label);
-            if (entry) entry.revenue += order.amount;
+            if (entry) entry.revenue += order.totalAmount;
         }
 
-        const totalRevenue = allCompletedOrders.reduce((sum, o) => sum + o.amount, 0);
-        const totalCompletedSales = allCompletedOrders.reduce((sum, o) => sum + o.quantity, 0);
+        const totalRevenue = allCompletedOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+        const totalCompletedSales = allCompletedOrders.reduce((sum, o) => sum + o.items.reduce((itemsSum, item) => itemsSum + item.quantity, 0), 0);
 
         const buyerStatsMap = new Map<string, { buyerId: string; buyerName: string; totalQuantity: number; totalSpent: number }>();
         for (const order of allCompletedOrders) {
             const existing = buyerStatsMap.get(order.buyer.id);
             if (existing) {
-                existing.totalQuantity += order.quantity;
-                existing.totalSpent += order.amount;
+                existing.totalQuantity += order.items.reduce((itemsSum, item) => itemsSum + item.quantity, 0);
+                existing.totalSpent += order.totalAmount;
             } else {
                 buyerStatsMap.set(order.buyer.id, {
                     buyerId: order.buyer.id,
                     buyerName: order.buyer.name,
-                    totalQuantity: order.quantity,
-                    totalSpent: order.amount,
+                    totalQuantity: order.items.reduce((itemsSum, item) => itemsSum + item.quantity, 0),
+                    totalSpent: order.totalAmount,
                 });
             }
         }
@@ -780,7 +884,7 @@ export const generateProductPaymentQr = async (req: AuthRequest, res: Response):
 
 /**
  * POST /seller/orders
- * Create a buyer order for a product.
+ * Create a buyer checkout order after address and payment confirmation.
  */
 export const createOrder = async (req: AuthRequest, res: Response): Promise<void> => {
     const buyerId = req.user!.id;
@@ -791,72 +895,138 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
         return;
     }
 
-    const { productId, quantity = 1 } = parsed.data;
+    const { items, deliveryAddress } = parsed.data;
+    const mergedItems = items.reduce<Array<{ productId: string; quantity: number }>>((acc, item) => {
+        const existing = acc.find((entry) => entry.productId === item.productId);
+        if (existing) {
+            existing.quantity += item.quantity;
+            return acc;
+        }
+
+        acc.push({ productId: item.productId, quantity: item.quantity });
+        return acc;
+    }, []);
 
     try {
-        const product = await prisma.product.findUnique({
-            where: { id: productId },
-            select: { id: true, price: true, sellerId: true, stock: true },
+        const products = await prisma.product.findMany({
+            where: { id: { in: mergedItems.map((item) => item.productId) } },
+            select: { id: true, title: true, price: true, sellerId: true, stock: true },
         });
 
-        if (!product) {
-            res.status(404).json({ error: 'Product not found' });
+        if (products.length !== mergedItems.length) {
+            res.status(404).json({ error: 'One or more products were not found' });
             return;
         }
 
-        if (product.sellerId === buyerId) {
+        const quantityByProductId = new Map(mergedItems.map((item) => [item.productId, item.quantity]));
+
+        if (products.some((product) => product.sellerId === buyerId)) {
             res.status(400).json({ error: 'You cannot order your own product' });
             return;
         }
 
-        if (product.stock < quantity) {
-            res.status(400).json({ error: `Only ${product.stock} item(s) left in stock` });
+        const stockIssue = products.find((product) => (quantityByProductId.get(product.id) ?? 0) > product.stock);
+        if (stockIssue) {
+            const requestedQuantity = quantityByProductId.get(stockIssue.id) ?? 0;
+            res.status(400).json({ error: `Only ${stockIssue.stock} item(s) left in stock for ${stockIssue.title} (requested ${requestedQuantity})` });
             return;
         }
 
-        const order = await prisma.$transaction(async (tx) => {
-            const updatedCount = await tx.product.updateMany({
-                where: {
-                    id: product.id,
-                    stock: { gte: quantity },
-                },
+        const totalAmount = products.reduce((sum, product) => {
+            const quantity = quantityByProductId.get(product.id) ?? 0;
+            return sum + product.price * quantity;
+        }, 0);
+
+        const createdOrder = await prisma.$transaction(async (tx) => {
+            const address = await tx.address.create({
                 data: {
-                    stock: { decrement: quantity },
+                    fullName: deliveryAddress.fullName,
+                    phoneNumber: deliveryAddress.phoneNumber,
+                    streetAddress: deliveryAddress.streetAddress,
+                    city: deliveryAddress.city,
+                    state: deliveryAddress.state,
+                    pincode: deliveryAddress.pincode,
                 },
             });
 
-            if (updatedCount.count === 0) {
-                throw new Error('INSUFFICIENT_STOCK');
+            for (const product of products) {
+                const quantity = quantityByProductId.get(product.id) ?? 0;
+                const updatedCount = await tx.product.updateMany({
+                    where: {
+                        id: product.id,
+                        stock: { gte: quantity },
+                    },
+                    data: {
+                        stock: { decrement: quantity },
+                    },
+                });
+
+                if (updatedCount.count === 0) {
+                    throw new Error('INSUFFICIENT_STOCK');
+                }
             }
 
-            return tx.order.create({
+            const order = await tx.order.create({
                 data: {
-                    productId: product.id,
                     buyerId,
-                    sellerId: product.sellerId,
-                    quantity,
-                    amount: product.price * quantity,
-                    // Payment is confirmed client-side before placing the order,
-                    // so this order should contribute to seller revenue immediately.
-                    status: 'COMPLETED',
+                    totalAmount,
+                    status: 'PLACED',
+                    paymentMethod: 'QR',
+                    addressId: address.id,
+                    primarySellerId: products[0]?.sellerId ?? null,
                 },
             });
+
+            await tx.orderItem.createMany({
+                data: products.map((product) => {
+                    const quantity = quantityByProductId.get(product.id) ?? 0;
+                    const lineTotal = product.price * quantity;
+
+                    return {
+                        orderId: order.id,
+                        productId: product.id,
+                        sellerId: product.sellerId,
+                        quantity,
+                        unitPrice: product.price,
+                        lineTotal,
+                    };
+                }),
+            });
+
+            return order;
         });
 
+        const orderWithDetails = await prisma.order.findUnique({
+            where: { id: createdOrder.id },
+            include: {
+                address: true,
+                items: {
+                    include: {
+                        product: { select: { id: true, title: true, imageUrl: true, price: true } },
+                        seller: { select: { id: true, name: true } },
+                    },
+                },
+            },
+        });
+
+        if (!orderWithDetails) {
+            res.status(500).json({ error: 'Failed to load created order' });
+            return;
+        }
+
         emitOrderPlaced({
-            id: order.id,
-            productId: order.productId,
-            buyerId: order.buyerId,
-            sellerId: order.sellerId,
-            amount: order.amount,
-            quantity: order.quantity,
-            status: order.status,
-            createdAt: order.createdAt.toISOString(),
+            id: orderWithDetails.id,
+            buyerId: orderWithDetails.buyerId,
+            totalAmount: orderWithDetails.totalAmount,
+            itemCount: orderWithDetails.items.reduce((sum, item) => sum + item.quantity, 0),
+            status: orderWithDetails.status,
+            createdAt: orderWithDetails.createdAt.toISOString(),
+            primarySellerId: orderWithDetails.primarySellerId,
         });
 
         res.status(201).json({
-            ...order,
             message: 'Order placed successfully',
+            order: orderWithDetails,
         });
     } catch (err) {
         if (err instanceof Error && err.message === 'INSUFFICIENT_STOCK') {
@@ -865,6 +1035,45 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
         }
 
         console.error('Create order error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+/**
+ * GET /seller/orders/:id
+ * Returns a single buyer order with address and items.
+ */
+export const getBuyerOrderById = async (req: AuthRequest, res: Response): Promise<void> => {
+    const buyerId = req.user!.id;
+    const id = resolveParamId(req.params.id);
+
+    if (!id) {
+        res.status(400).json({ error: 'Order id is required' });
+        return;
+    }
+
+    try {
+        const order = await prisma.order.findFirst({
+            where: { id, buyerId },
+            include: {
+                address: true,
+                items: {
+                    include: {
+                        product: { select: { id: true, title: true, imageUrl: true, price: true } },
+                        seller: { select: { id: true, name: true } },
+                    },
+                },
+            },
+        });
+
+        if (!order) {
+            res.status(404).json({ error: 'Order not found' });
+            return;
+        }
+
+        res.json(mapOrderForBuyerView(order));
+    } catch (err) {
+        console.error('Get buyer order by id error:', err);
         res.status(500).json({ error: 'Internal server error' });
     }
 };
@@ -883,39 +1092,28 @@ export const getBuyerOrderHistory = async (req: AuthRequest, res: Response): Pro
                 status: { not: 'CANCELLED' },
             },
             orderBy: { createdAt: 'desc' },
-            select: {
-                id: true,
-                quantity: true,
-                amount: true,
-                status: true,
-                createdAt: true,
-                product: {
-                    select: {
-                        id: true,
-                        title: true,
-                        imageUrl: true,
-                        price: true,
-                    },
-                },
-                seller: {
-                    select: {
-                        id: true,
-                        name: true,
+            include: {
+                address: true,
+                items: {
+                    include: {
+                        product: { select: { id: true, title: true, imageUrl: true, price: true } },
+                        seller: { select: { id: true, name: true } },
                     },
                 },
             },
         });
 
-        const totalItemsBought = orders.reduce((sum, order) => sum + order.quantity, 0);
-        const totalAmountSpent = orders.reduce((sum, order) => sum + order.amount, 0);
+        const mappedOrders = orders.map(mapOrderForBuyerView);
+        const totalItemsBought = mappedOrders.reduce((sum, order) => sum + order.quantity, 0);
+        const totalAmountSpent = mappedOrders.reduce((sum, order) => sum + order.totalAmount, 0);
 
         res.json({
             summary: {
-                totalOrders: orders.length,
+                totalOrders: mappedOrders.length,
                 totalItemsBought,
                 totalAmountSpent,
             },
-            orders,
+            orders: mappedOrders,
         });
     } catch (err) {
         console.error('Get buyer order history error:', err);

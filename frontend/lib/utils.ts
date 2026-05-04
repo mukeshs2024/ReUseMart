@@ -79,3 +79,53 @@ export function savingsPercent(price: number, originalPrice: number): number {
     if (originalPrice <= 0 || originalPrice <= price) return 0;
     return Math.round(((originalPrice - price) / originalPrice) * 100);
 }
+
+export function getPlaceholderImage(category?: string | null, id?: string): string {
+    const charCodeSum = (id || '').split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+    const cat = categoryLabelFromValue(category);
+    
+    switch(cat) {
+        case 'Electronics':
+            const electronics = [
+                'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=600&q=80',
+                'https://images.unsplash.com/photo-1550009158-9ebf69173e03?w=600&q=80',
+                'https://images.unsplash.com/photo-1593640408182-31c70c8268f5?w=600&q=80',
+                'https://images.unsplash.com/photo-1588702545922-e612f02685de?w=600&q=80'
+            ];
+            return electronics[charCodeSum % electronics.length];
+        case 'Mobiles':
+            const mobiles = [
+                'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&q=80',
+                'https://images.unsplash.com/photo-1598327105666-5b89351cb31b?w=600&q=80',
+                'https://images.unsplash.com/photo-1533228100845-08145b01de14?w=600&q=80',
+                'https://images.unsplash.com/photo-1574944985070-8f3ebc6b79d2?w=600&q=80'
+            ];
+            return mobiles[charCodeSum % mobiles.length];
+        case 'Furniture':
+            const furniture = [
+                'https://images.unsplash.com/photo-1538688525198-9b88f6f53126?w=600&q=80',
+                'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=600&q=80',
+                'https://images.unsplash.com/photo-1505693314120-0d443867891c?w=600&q=80',
+                'https://images.unsplash.com/photo-1592078615290-033ee584e267?w=600&q=80'
+            ];
+            return furniture[charCodeSum % furniture.length];
+        case 'Fashion':
+            const fashion = [
+                'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?w=600&q=80',
+                'https://images.unsplash.com/photo-1550639525-c97d455acf70?w=600&q=80',
+                'https://images.unsplash.com/photo-1617137968427-85924c800a22?w=600&q=80',
+                'https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=600&q=80'
+            ];
+            return fashion[charCodeSum % fashion.length];
+        case 'Accessories':
+            const accessories = [
+                'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&q=80',
+                'https://images.unsplash.com/photo-1611652022419-a9419f74343d?w=600&q=80',
+                'https://images.unsplash.com/photo-1509048191080-d2984bad6ae5?w=600&q=80',
+                'https://images.unsplash.com/photo-1606760227091-3dd870d97f1d?w=600&q=80'
+            ];
+            return accessories[charCodeSum % accessories.length];
+        default:
+            return 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=600&q=80';
+    }
+}

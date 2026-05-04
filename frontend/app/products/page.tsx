@@ -19,6 +19,7 @@ interface Product {
     description: string;
     price: number;
     stock?: number;
+    usageYears?: number;
     category?: 'ELECTRONICS' | 'MOBILES' | 'FURNITURE' | 'FASHION' | 'ACCESSORIES';
     imageUrl: string;
     condition?: string;
@@ -41,6 +42,7 @@ function ProductsPageContent() {
     const [priceRange, setPriceRange] = useState<[number, number]>([0, 5000]);
     const [condition, setCondition] = useState(searchParams.get('condition') || 'All');
     const [category, setCategory] = useState<CategoryFilter>(normalizeCategoryFilter(searchParams.get('category')));
+    const [sortBy, setSortBy] = useState('newest');
 
     useEffect(() => {
         setQuery(searchParams.get('q') || '');
@@ -85,23 +87,39 @@ function ProductsPageContent() {
     }, [fetchProducts]);
 
     const filteredProducts = useMemo(() => {
-        return products.filter((product) => {
+        let filtered = products.filter((product) => {
             const conditionOk = condition === 'All' || normalizeCondition(product.condition) === condition;
             const displayCategory = categoryLabelFromValue(product.category);
             const categoryOk = category === 'All' || displayCategory === category;
             const priceOk = product.price >= priceRange[0] && product.price <= priceRange[1];
             return conditionOk && categoryOk && priceOk;
         });
-    }, [products, condition, category, priceRange]);
+
+        // Apply sorting
+        switch (sortBy) {
+            case 'price-low':
+                return filtered.sort((a, b) => a.price - b.price);
+            case 'price-high':
+                return filtered.sort((a, b) => b.price - a.price);
+            case 'newest':
+            default:
+                return filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        }
+    }, [products, condition, category, priceRange, sortBy]);
 
     return (
         <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', paddingTop: 88, paddingBottom: 20 }}>
             <div className="page-container">
-                <div style={{ marginBottom: 12 }}>
+                <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
                     <div>
                         <h1 style={{ fontSize: 28, fontWeight: 800 }}>Product Listings</h1>
                         <p style={{ margin: 0, color: 'var(--text-secondary)' }}>{filteredProducts.length} items found</p>
                     </div>
+                    <select className="input-field" value={sortBy} onChange={(e) => setSortBy(e.target.value)} style={{ maxWidth: 200 }}>
+                        <option value="newest">Sort: Newest first</option>
+                        <option value="price-low">Price: Low to High</option>
+                        <option value="price-high">Price: High to Low</option>
+                    </select>
                 </div>
 
                 <div style={{ position: 'relative', maxWidth: 560, marginBottom: 12 }}>
@@ -115,7 +133,7 @@ function ProductsPageContent() {
                     />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 14 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: 14 }}>
                     <aside className="card" style={{ padding: 14, alignSelf: 'start', position: 'sticky', top: 86 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                             <Filter className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
@@ -163,7 +181,7 @@ function ProductsPageContent() {
 
                     <section>
                         {loading ? (
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
                                 {Array.from({ length: 8 }).map((_, i) => <div key={i} className="skeleton" style={{ height: 290 }} />)}
                             </div>
                         ) : filteredProducts.length === 0 ? (
@@ -172,7 +190,7 @@ function ProductsPageContent() {
                                 <p style={{ marginTop: 6, color: 'var(--text-secondary)' }}>Try adjusting price range, category, or condition.</p>
                             </div>
                         ) : (
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
                                 {filteredProducts.map((product) => (
                                     <ProductCard key={product.id} product={product} />
                                 ))}

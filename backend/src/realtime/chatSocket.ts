@@ -15,13 +15,12 @@ export interface ChatMessageEventPayload {
 
 export interface OrderPlacedEventPayload {
     id: string;
-    productId: string;
     buyerId: string;
-    sellerId: string;
-    amount: number;
-    quantity: number;
-    status: 'PENDING' | 'COMPLETED' | 'CANCELLED';
+    totalAmount: number;
+    itemCount: number;
+    status: 'PLACED' | 'COMPLETED' | 'CANCELLED';
     createdAt: string;
+    primarySellerId?: string | null;
 }
 
 let io: Server | null = null;
@@ -97,9 +96,11 @@ export const emitOrderPlaced = (payload: OrderPlacedEventPayload): void => {
         return;
     }
 
-    io.to(userRoom(payload.sellerId)).emit('order:placed', payload);
+    if (payload.primarySellerId) {
+        io.to(userRoom(payload.primarySellerId)).emit('order:placed', payload);
+    }
 
-    if (payload.buyerId !== payload.sellerId) {
+    if (payload.buyerId !== payload.primarySellerId) {
         io.to(userRoom(payload.buyerId)).emit('order:placed', payload);
     }
 };

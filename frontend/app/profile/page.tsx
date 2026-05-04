@@ -10,20 +10,41 @@ import { formatCurrency, formatDistanceToNow } from '@/lib/utils';
 
 interface PurchaseOrder {
     id: string;
+    totalAmount: number;
     quantity: number;
-    amount: number;
-    status: 'PENDING' | 'COMPLETED' | 'CANCELLED';
+    status: 'PLACED' | 'COMPLETED' | 'CANCELLED';
     createdAt: string;
+    address: {
+        fullName: string;
+        city: string;
+        state: string;
+        pincode: string;
+    };
+    items: Array<{
+        id: string;
+        quantity: number;
+        lineTotal: number;
+        product: {
+            id: string;
+            title: string;
+            imageUrl: string;
+            price: number;
+        };
+        seller: {
+            id: string;
+            name: string;
+        };
+    }>;
     product: {
         id: string;
         title: string;
         imageUrl: string;
         price: number;
-    };
+    } | null;
     seller: {
         id: string;
         name: string;
-    };
+    } | null;
 }
 
 interface PurchaseHistoryResponse {
@@ -132,8 +153,8 @@ export default function ProfilePage() {
                             {history.orders.map((order) => (
                                 <article key={order.id} className="card" style={{ padding: 10, display: 'grid', gridTemplateColumns: '72px 1fr auto', gap: 10, alignItems: 'center' }}>
                                     <img
-                                        src={order.product.imageUrl}
-                                        alt={order.product.title}
+                                        src={order.product?.imageUrl || 'https://placehold.co/72x72/F3F4F6/9CA3AF?text=Order'}
+                                        alt={order.product?.title || 'Order'}
                                         style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, background: '#F3F4F6' }}
                                         onError={(e) => {
                                             (e.target as HTMLImageElement).src = 'https://placehold.co/72x72/F3F4F6/9CA3AF?text=No+Image';
@@ -141,12 +162,21 @@ export default function ProfilePage() {
                                     />
 
                                     <div>
-                                        <Link href={`/products/${order.product.id}`} style={{ textDecoration: 'none', color: 'var(--text-primary)' }}>
-                                            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>{order.product.title}</h3>
-                                        </Link>
+                                        {order.product ? (
+                                            <Link href={`/products/${order.product.id}`} style={{ textDecoration: 'none', color: 'var(--text-primary)' }}>
+                                                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>{order.product.title}</h3>
+                                            </Link>
+                                        ) : (
+                                            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>Checkout order</h3>
+                                        )}
                                         <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: 13 }}>
-                                            Seller: {order.seller.name}
+                                            {order.items.length} item{order.items.length === 1 ? '' : 's'} • {order.address.city}, {order.address.state}
                                         </p>
+                                        {order.seller ? (
+                                            <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: 13 }}>
+                                                Seller: {order.seller.name}
+                                            </p>
+                                        ) : null}
                                         <div style={{ display: 'flex', gap: 10, marginTop: 6, flexWrap: 'wrap' }}>
                                             <span style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                                                 <Package className="w-3.5 h-3.5" /> Qty: {order.quantity}
@@ -158,7 +188,7 @@ export default function ProfilePage() {
                                     </div>
 
                                     <div style={{ textAlign: 'right' }}>
-                                        <p style={{ margin: 0, fontWeight: 800 }}>{formatCurrency(order.amount)}</p>
+                                        <p style={{ margin: 0, fontWeight: 800 }}>{formatCurrency(order.totalAmount)}</p>
                                         <p style={{ margin: '4px 0 0', color: 'var(--text-muted)', fontSize: 12 }}>
                                             {order.status}
                                         </p>

@@ -15,13 +15,12 @@ export interface LiveChatMessage {
 
 export interface LiveOrderPlaced {
     id: string;
-    productId: string;
     buyerId: string;
-    sellerId: string;
-    amount: number;
-    quantity: number;
-    status: 'PENDING' | 'COMPLETED' | 'CANCELLED';
+    totalAmount: number;
+    itemCount: number;
+    status: 'PLACED' | 'COMPLETED' | 'CANCELLED';
     createdAt: string;
+    primarySellerId?: string | null;
 }
 
 let socket: Socket | null = null;

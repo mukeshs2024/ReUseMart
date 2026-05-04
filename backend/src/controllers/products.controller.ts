@@ -96,8 +96,9 @@ export const getProducts = async (req: Request, res: Response): Promise<void> =>
             orderBy: { createdAt: 'desc' },
             include: {
                 seller: {
-                    select: { id: true, name: true },
+                    select: { id: true, name: true, trustScore: true },
                 },
+                // include condition details for product page display
             },
         });
 
@@ -148,7 +149,7 @@ export const getProductById = async (req: Request, res: Response): Promise<void>
             where: { id },
             include: {
                 seller: {
-                    select: { id: true, name: true },
+                    select: { id: true, name: true, trustScore: true },
                 },
             },
         });

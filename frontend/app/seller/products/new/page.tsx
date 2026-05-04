@@ -30,9 +30,11 @@ export default function NewProductPage() {
         description: '',
         price: '',
         stock: '1',
+        usageYears: '0',
         category: 'ELECTRONICS',
         condition: 'USED',
         imageUrl: '',
+        conditionDetails: [] as string[],
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -46,6 +48,8 @@ export default function NewProductPage() {
                 ...form,
                 price: parseFloat(form.price),
                 stock: parseInt(form.stock, 10),
+                usageYears: parseInt(form.usageYears, 10),
+                conditionDetails: form.conditionDetails,
             });
             router.push('/seller/products');
         } catch (err: any) {
@@ -139,6 +143,20 @@ export default function NewProductPage() {
                     </div>
 
                     <div>
+                        <label className="input-label">Used For (Years) *</label>
+                        <input
+                            type="number"
+                            className="input-field"
+                            placeholder="0"
+                            value={form.usageYears}
+                            onChange={(e) => setForm({ ...form, usageYears: e.target.value })}
+                            required
+                            min="0"
+                            step="1"
+                        />
+                    </div>
+
+                    <div>
                         <label className="input-label">Category *</label>
                         <select
                             className="input-field"
@@ -164,6 +182,34 @@ export default function NewProductPage() {
                                 <option key={option.value} value={option.value}>{option.label}</option>
                             ))}
                         </select>
+                    </div>
+
+                    <div>
+                        <label className="input-label">Condition Details (optional)</label>
+                        <div style={{ display: 'grid', gap: 6 }}>
+                            {[
+                                'Has scratches or dents',
+                                'Missing any parts or accessories',
+                                'Screen or display damage (if applicable)',
+                                'Fully functional and working',
+                                'Comes with original box or packaging',
+                                'Repair history (has been repaired before)',
+                            ].map((label) => (
+                                <label key={label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={form.conditionDetails.includes(label)}
+                                        onChange={(e) => {
+                                            const next = e.target.checked
+                                                ? [...form.conditionDetails, label]
+                                                : form.conditionDetails.filter((s) => s !== label);
+                                            setForm({ ...form, conditionDetails: next });
+                                        }}
+                                    />
+                                    <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{label}</span>
+                                </label>
+                            ))}
+                        </div>
                     </div>
 
                     <div>

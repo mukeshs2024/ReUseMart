@@ -15,6 +15,7 @@ interface Product {
     description: string;
     price: number;
     stock: number;
+    usageYears: number;
     category: 'ELECTRONICS' | 'MOBILES' | 'FURNITURE' | 'FASHION' | 'ACCESSORIES';
     condition: 'LIKE_NEW' | 'USED' | 'OLD' | 'TOO_OLD';
     imageUrl: string;
@@ -182,6 +183,9 @@ export default function SellerProductsPage() {
                                     </p>
                                     <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
                                         Condition: {conditionLabel(product.condition)}
+                                    </p>
+                                    <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
+                                        Used For: {product.usageYears} {product.usageYears === 1 ? 'year' : 'years'}
                                     </p>
                                     <p className="text-xs mb-2" style={{ color: product.stock > 0 ? 'var(--text-muted)' : '#B91C1C' }}>
                                         Stock: {product.stock}
