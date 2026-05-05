@@ -6,6 +6,18 @@ const adminEmail = process.env.SEED_ADMIN_EMAIL || 'admin@reusemart.com';
 const adminPassword = process.env.SEED_ADMIN_PASSWORD || 'Admin@1234';
 const adminName = process.env.SEED_ADMIN_NAME || 'Admin';
 
+// Helper function to get category-based image URLs
+function getProductImage(category: string): string {
+    const categoryImages: Record<string, string> = {
+        ELECTRONICS: '/images/electronics/default.svg',
+        MOBILES: '/images/electronics/default.svg',
+        FURNITURE: '/images/furniture/default.svg',
+        FASHION: '/images/fashion/default.svg',
+        ACCESSORIES: '/images/accessories/default.svg',
+    };
+    return categoryImages[category] || '/images/default.svg';
+}
+
 async function main() {
     console.log('Clearing existing marketplace data...');
 
@@ -199,7 +211,7 @@ async function main() {
                     category: p.category as any,
                     condition: p.condition as any,
                     sellerId: p.seller.id,
-                    imageUrl: `https://images.pexels.com/photos/1124465/pexels-photo-1124465.jpeg?auto=compress&cs=tinysrgb&w=600&h=400&fit=crop`,
+                    imageUrl: getProductImage(p.category as string),
                 },
             })
         )

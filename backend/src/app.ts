@@ -61,7 +61,7 @@ app.use(express.json());
 // --- Routes ---
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
-app.use('/api/seller', sellerRoutes);
+app.use('/api/sellers', sellerRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/offers', offersRoutes);

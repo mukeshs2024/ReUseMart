@@ -35,8 +35,8 @@ export default function SellerDashboardPage() {
 
     const fetchDashboardData = async () => {
         const [productsRes, analyticsRes] = await Promise.all([
-            api.get('/seller/products'),
-            api.get('/seller/analytics'),
+            api.get('/sellers/products'),
+            api.get('/sellers/analytics'),
         ]);
 
         setProducts(productsRes.data);

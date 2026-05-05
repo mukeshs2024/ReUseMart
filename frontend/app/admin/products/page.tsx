@@ -92,22 +92,9 @@ export default function AdminProductsPage() {
                                     {filtered.map((p) => (
                                         <tr key={p.id} className="hover:bg-bgHover transition-colors">
                                             <td className="px-5 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-lg overflow-hidden bg-bgHover shrink-0">
-                                                        <img
-                                                            src={p.imageUrl}
-                                                            alt={p.title}
-                                                            className="w-full h-full object-cover"
-                                                            onError={(e) => {
-                                                                (e.target as HTMLImageElement).src =
-                                                                    'https://placehold.co/80x80/1e293b/475569?text=?';
-                                                            }}
-                                                        />
-                                                    </div>
-                                                    <div className="min-w-0">
-                                                        <p className="text-sm font-medium text-textPrimary truncate max-w-[200px]">{p.title}</p>
-                                                        <p className="text-xs text-textMuted truncate max-w-[200px]">{p.description}</p>
-                                                    </div>
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-medium text-textPrimary truncate max-w-[200px]">{p.title}</p>
+                                                    <p className="text-xs text-textMuted truncate max-w-[200px]">{p.description}</p>
                                                 </div>
                                             </td>
                                             <td className="px-5 py-4">

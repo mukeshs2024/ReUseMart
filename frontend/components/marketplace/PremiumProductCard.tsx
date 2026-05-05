@@ -2,8 +2,6 @@
 
 import Link from 'next/link';
 import { Search, Smartphone, Sofa, Shirt, Watch, Laptop, Tag, MapPin, Heart } from 'lucide-react';
-import Image from 'next/image';
-import { getPlaceholderImage } from '@/lib/utils';
 
 interface ProductCardProps {
   product: any;
@@ -12,10 +10,6 @@ interface ProductCardProps {
 export function PremiumProductCard({ product }: ProductCardProps) {
   const discount = 20; // Example discount percentage
   const originalPrice = Math.round(product.price / (1 - discount / 100));
-
-  const finalImageUrl = (!product.imageUrl || product.imageUrl.includes('unsplash.com') || product.imageUrl.includes('placehold.co')) 
-      ? getPlaceholderImage(product.category, product.id) 
-      : product.imageUrl;
 
   return (
     <div className="group h-full rounded-lg border border-gray-200 bg-white overflow-hidden hover:shadow-lg transition-shadow duration-300">
@@ -38,15 +32,9 @@ export function PremiumProductCard({ product }: ProductCardProps) {
           <Heart className="w-5 h-5 text-gray-400 hover:text-red-500" />
         </button>
 
-        {/* Product Image */}
-        <img
-          src={finalImageUrl}
-          alt={product.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          onError={(e) => {
-              (e.target as HTMLImageElement).src = 'https://placehold.co/400x300/F3F4F6/9CA3AF?text=No+Image';
-          }}
-        />
+        <div className="absolute inset-0 flex items-center justify-center text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
+          Image Removed
+        </div>
       </div>
 
       {/* Content */}

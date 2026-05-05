@@ -29,6 +29,20 @@ function generatePaymentText(productId: string, sellerId: string, price: number,
     return `reusemart://pay?productId=${productId}&sellerId=${sellerId}&amount=${price}&title=${encodeURIComponent(title)}`;
 }
 
+// Helper function to get category-based default image URL
+function getCategoryDefaultImageUrl(category: string): string {
+    // Use local images in /public/images for predictable, fast serving
+    const categoryImages: Record<string, string> = {
+        'ELECTRONICS': '/images/electronics/default.svg',
+        'MOBILES': '/images/electronics/default.svg',
+        'FURNITURE': '/images/furniture/default.svg',
+        'FASHION': '/images/fashion/default.svg',
+        'ACCESSORIES': '/images/accessories/default.svg',
+    };
+
+    return categoryImages[category] || '/images/default.svg';
+}
+
 // Ensure product has QR code - auto-generate if missing
 async function ensureProductHasQr(product: any) {
     if (!product.paymentQrCode) {
@@ -58,7 +72,7 @@ const productSchema = z.object({
     usageYears: z.number().int().min(0, 'Usage years cannot be negative').max(100, 'Usage years is too large'),
     category: z.enum(['ELECTRONICS', 'MOBILES', 'FURNITURE', 'FASHION', 'ACCESSORIES']),
     condition: z.enum(['LIKE_NEW', 'USED', 'OLD', 'TOO_OLD']),
-    imageUrl: z.string().url('Image URL must be a valid URL'),
+    imageUrl: z.string().url('Image URL must be a valid URL').optional(),
     conditionDetails: z.array(z.string()).optional(),
 });
 
@@ -251,11 +265,16 @@ export const createProduct = async (req: AuthRequest, res: Response): Promise<vo
     const sellerId = req.user!.id;
 
     try {
+        // Determine imageUrl: use provided or get category default
+        const imageUrl = parsed.data.imageUrl || getCategoryDefaultImageUrl(parsed.data.category);
+
         // First create product with basic data
         // QR will be generated after we have the product ID
+        const { conditionDetails, ...productData } = parsed.data;
         const product = await prisma.product.create({
             data: {
-                ...parsed.data,
+                ...productData,
+                imageUrl,
                 sellerId,
             },
         });
@@ -308,9 +327,11 @@ export const updateProduct = async (req: AuthRequest, res: Response): Promise<vo
             return;
         }
 
+        const { conditionDetails, ...updateData } = parsed.data;
+
         const updated = await prisma.product.update({
             where: { id },
-            data: parsed.data,
+            data: updateData,
         });
 
         res.json(updated);

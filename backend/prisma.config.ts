@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { defineConfig, env } from "prisma/config";
 
-const prismaDatasourceUrl = process.env.DATABASE_URL || env("DATABASE_URL");
+const prismaDatasourceUrl = process.env.DATABASE_POOL_URL || process.env.DATABASE_URL || env("DATABASE_POOL_URL") || env("DATABASE_URL");
 
 export default defineConfig({
     schema: "prisma/schema.prisma",
@@ -10,7 +10,7 @@ export default defineConfig({
         seed: "tsx prisma/seed.ts",
     },
     datasource: {
-        // Render and runtime use DATABASE_URL from environment variables.
+        // Use connection pool URL for runtime, fall back to direct URL if needed
         url: prismaDatasourceUrl,
     },
 });

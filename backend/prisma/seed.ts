@@ -6,6 +6,84 @@ const adminEmail = process.env.SEED_ADMIN_EMAIL || 'admin@reusemart.com';
 const adminPassword = process.env.SEED_ADMIN_PASSWORD || 'Admin@1234';
 const adminName = process.env.SEED_ADMIN_NAME || 'Admin';
 
+// Helper function to get category-based image URLs
+function getLocalProductImage(title: string, category: string): string {
+    const categoryImages: Record<string, Record<string, string>> = {
+        ELECTRONICS: {
+            default: '/images/electronics/default.svg',
+            laptop: '/images/electronics/laptop.svg',
+            camera: '/images/electronics/camera.svg',
+            headphone: '/images/electronics/headphones.svg',
+            'power bank': '/images/electronics/powerbank.svg',
+            tablet: '/images/electronics/tablet.svg',
+        },
+        MOBILES: {
+            default: '/images/electronics/default.svg',
+            iphone: '/images/electronics/phone.svg',
+        },
+        FURNITURE: {
+            default: '/images/furniture/default.svg',
+            chair: '/images/furniture/chair.svg',
+            sofa: '/images/furniture/sofa.svg',
+            table: '/images/furniture/table.svg',
+        },
+        FASHION: {
+            default: '/images/fashion/default.svg',
+            shoes: '/images/fashion/shoes.svg',
+            bag: '/images/fashion/bag.svg',
+        },
+        ACCESSORIES: {
+            default: '/images/accessories/default.svg',
+        },
+    };
+
+    const categoryMap = categoryImages[category] || categoryImages.ACCESSORIES;
+    const titleLower = title.toLowerCase();
+
+    for (const [keyword, url] of Object.entries(categoryMap)) {
+        if (keyword !== 'default' && titleLower.includes(keyword)) {
+            return url;
+        }
+    }
+
+    return categoryMap.default || '/images/default.svg';
+}
+
+function getProductImage(title: string, category: string): string {
+    const categoryImages: Record<string, Record<string, string>> = {
+        ELECTRONICS: {
+            default: 'https://images.pexels.com/photos/3962286/pexels-photo-3962286.jpeg?auto=compress&cs=tinysrgb&w=600',
+            laptop: 'https://images.pexels.com/photos/18105/pexels-photo.jpg?auto=compress&cs=tinysrgb&w=600',
+            camera: 'https://images.pexels.com/photos/606933/pexels-photo-606933.jpeg?auto=compress&cs=tinysrgb&w=600',
+            headphone: 'https://images.pexels.com/photos/3394650/pexels-photo-3394650.jpeg?auto=compress&cs=tinysrgb&w=600',
+            'power bank': 'https://images.pexels.com/photos/3962286/pexels-photo-3962286.jpeg?auto=compress&cs=tinysrgb&w=600',
+            tablet: 'https://images.pexels.com/photos/788946/pexels-photo-788946.jpeg?auto=compress&cs=tinysrgb&w=600',
+        },
+        MOBILES: {
+            default: 'https://images.pexels.com/photos/788946/pexels-photo-788946.jpeg?auto=compress&cs=tinysrgb&w=600',
+        },
+        FURNITURE: {
+            default: 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg?auto=compress&cs=tinysrgb&w=600',
+            chair: 'https://images.pexels.com/photos/1457842/pexels-photo-1457842.jpeg?auto=compress&cs=tinysrgb&w=600',
+            sofa: 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg?auto=compress&cs=tinysrgb&w=600',
+            table: 'https://images.pexels.com/photos/1000371/pexels-photo-1000371.jpeg?auto=compress&cs=tinysrgb&w=600',
+        },
+        FASHION: {
+            default: 'https://images.pexels.com/photos/2769274/pexels-photo-2769274.jpeg?auto=compress&cs=tinysrgb&w=600',
+        },
+        ACCESSORIES: {
+            default: 'https://images.pexels.com/photos/3587620/pexels-photo-3587620.jpeg?auto=compress&cs=tinysrgb&w=600',
+        },
+    };\n    const categoryMap = categoryImages[category] || categoryImages.ACCESSORIES;
+    const titleLower = title.toLowerCase();
+    for (const [keyword, url] of Object.entries(categoryMap)) {
+        if (keyword !== 'default' && titleLower.includes(keyword)) {
+            return url;
+        }
+    }
+    return categoryMap.default || 'https://images.pexels.com/photos/5632399/pexels-photo-5632399.jpeg?auto=compress&cs=tinysrgb&w=600';
+}
+
 async function main() {
     console.log('Clearing existing marketplace data...');
 
@@ -510,7 +588,7 @@ async function main() {
                     category: product.category,
                     condition: product.condition,
                     sellerId: product.sellerId,
-                    imageUrl: 'https://placehold.co/600x400/E5E7EB/9CA3AF?text=' + encodeURIComponent(product.title),
+                    imageUrl: getLocalProductImage(product.title, product.category),
                 },
             })
         )

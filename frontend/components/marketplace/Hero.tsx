@@ -45,11 +45,15 @@ export default function Hero() {
           <div className="w-full">
             <div className="relative h-80 sm:h-96 rounded-xl shadow-lg overflow-hidden">
                 <Image
-                  src="https://images.unsplash.com/photo-1526178612703-7a66a3d0b8f8?w=1200&q=80&auto=format&fit=crop"
-                  alt="Marketplace multi-category items"
+                  src="https://images.pexels.com/photos/3962286/pexels-photo-3962286.jpeg?auto=compress&cs=tinysrgb&w=1200&h=900&dpr=1"
+                  alt="Marketplace multi-category items - electronics, furniture, accessories"
                   fill
                   sizes="(max-width: 1024px) 100vw, 50vw"
                   className="object-cover"
+                  priority
+                  onError={(e) => {
+                    e.currentTarget.src = 'https://images.pexels.com/photos/5632399/pexels-photo-5632399.jpeg?auto=compress&cs=tinysrgb&w=1200&h=900&dpr=1';
+                  }}
                 />
               </div>
           </div>

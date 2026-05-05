@@ -69,7 +69,7 @@ export default function SellerAnalyticsPage() {
     const [error, setError] = useState('');
 
     const fetchAnalytics = async () => {
-        const response = await api.get<AnalyticsData>('/seller/analytics');
+        const response = await api.get<AnalyticsData>('/sellers/analytics');
         setData(response.data);
         setError('');
     };

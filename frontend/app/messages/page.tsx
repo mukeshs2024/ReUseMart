@@ -344,14 +344,6 @@ export default function MessagesPage() {
                                             }}
                                         >
                                             <div className="flex items-start gap-3">
-                                                <img
-                                                    src={conversation.product.imageUrl}
-                                                    alt={conversation.product.title}
-                                                    className="w-10 h-10 rounded-md object-cover"
-                                                    onError={(event) => {
-                                                        (event.target as HTMLImageElement).src = 'https://placehold.co/80x80/F3F4F6/9CA3AF?text=No+Image';
-                                                    }}
-                                                />
                                                 <div className="min-w-0 flex-1">
                                                     <div className="flex items-center justify-between gap-2">
                                                         <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>

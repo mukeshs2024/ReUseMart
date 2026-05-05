@@ -71,7 +71,7 @@ export default function EditProductPage() {
         setError('');
         setLoading(true);
         try {
-            await api.put(`/seller/products/${id}`, {
+            await api.put(`/sellers/products/${id}`, {
                 ...form,
                 price: parseFloat(form.price),
                 stock: parseInt(form.stock, 10),

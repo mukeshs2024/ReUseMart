@@ -68,7 +68,7 @@ export default function SellerProductsPage() {
 
     const fetchProducts = async () => {
         try {
-            const res = await api.get('/seller/products');
+            const res = await api.get('/sellers/products');
             setProducts(res.data);
         } catch (err) {
             console.error(err);
@@ -81,7 +81,7 @@ export default function SellerProductsPage() {
         if (!confirm('Are you sure you want to delete this product?')) return;
         setDeletingId(id);
         try {
-            await api.delete(`/seller/products/${id}`);
+            await api.delete(`/sellers/products/${id}`);
             setProducts((prev) => prev.filter((p) => p.id !== id));
         } catch (err) {
             console.error(err);
@@ -93,7 +93,7 @@ export default function SellerProductsPage() {
     const handleGenerateQr = async (id: string) => {
         setGeneratingQrId(id);
         try {
-            const res = await api.post(`/seller/products/${id}/generate-qr`, {});
+            const res = await api.post(`/sellers/products/${id}/generate-qr`, {});
             setProducts((prev) =>
                 prev.map((product) =>
                     product.id === id
@@ -151,14 +151,9 @@ export default function SellerProductsPage() {
                         {products.map((product) => (
                             <div key={product.id} className="card overflow-hidden group">
                                 <div className="relative aspect-[4/3] overflow-hidden" style={{ background: 'var(--bg-hover)' }}>
-                                    <img
-                                        src={product.imageUrl}
-                                        alt={product.title}
-                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                        onError={(e) => {
-                                            (e.target as HTMLImageElement).src = `https://placehold.co/400x300/f1f5f9/94a3b8?text=No+Image`;
-                                        }}
-                                    />
+                                    <div className="absolute inset-0 flex items-center justify-center text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-muted)' }}>
+                                        Image Removed
+                                    </div>
                                     <div className="absolute top-2 right-2">
                                         <span className="text-sm font-bold px-2.5 py-1 rounded-lg"
                                             style={{ background: 'rgba(10,10,10,0.85)', color: '#2563EB', border: '1px solid rgba(37,99,235,0.35)', backdropFilter: 'blur(8px)', fontFamily: 'Orbitron, system-ui, sans-serif' }}>

@@ -86,6 +86,10 @@ function ProductsPageContent() {
         fetchProducts();
     }, [fetchProducts]);
 
+    useEffect(() => {
+        console.log(products);
+    }, [products]);
+
     const filteredProducts = useMemo(() => {
         let filtered = products.filter((product) => {
             const conditionOk = condition === 'All' || normalizeCondition(product.condition) === condition;

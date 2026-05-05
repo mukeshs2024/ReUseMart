@@ -20,7 +20,17 @@ export function SellerCTA() {
 
           <div className="order-first lg:order-last w-full">
             <div className="relative h-72 w-full overflow-hidden rounded-xl bg-white/5">
-              <Image src="https://images.unsplash.com/photo-1520975914683-5b3105b3d0b9?w=1200&q=80&auto=format&fit=crop" alt="person listing items" fill className="object-cover" sizes="(max-width: 1024px) 100vw, 50vw" />
+              <Image 
+                src="https://images.pexels.com/photos/5632399/pexels-photo-5632399.jpeg?auto=compress&cs=tinysrgb&w=1200&h=900&dpr=1" 
+                alt="Seller listing second-hand items for marketplace" 
+                fill 
+                className="object-cover" 
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                priority
+                onError={(e) => {
+                  e.currentTarget.src = 'https://images.pexels.com/photos/3962286/pexels-photo-3962286.jpeg?auto=compress&cs=tinysrgb&w=1200&h=900&dpr=1';
+                }}
+              />
             </div>
           </div>
         </div>

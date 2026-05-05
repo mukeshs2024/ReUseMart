@@ -44,7 +44,7 @@ export default function NewProductPage() {
         setError('');
         setLoading(true);
         try {
-            await api.post('/seller/products', {
+            await api.post('/sellers/products', {
                 ...form,
                 price: parseFloat(form.price),
                 stock: parseInt(form.stock, 10),

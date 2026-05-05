@@ -151,16 +151,7 @@ export default function ProfilePage() {
                     ) : (
                         <div style={{ display: 'grid', gap: 10 }}>
                             {history.orders.map((order) => (
-                                <article key={order.id} className="card" style={{ padding: 10, display: 'grid', gridTemplateColumns: '72px 1fr auto', gap: 10, alignItems: 'center' }}>
-                                    <img
-                                        src={order.product?.imageUrl || 'https://placehold.co/72x72/F3F4F6/9CA3AF?text=Order'}
-                                        alt={order.product?.title || 'Order'}
-                                        style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, background: '#F3F4F6' }}
-                                        onError={(e) => {
-                                            (e.target as HTMLImageElement).src = 'https://placehold.co/72x72/F3F4F6/9CA3AF?text=No+Image';
-                                        }}
-                                    />
-
+                                <article key={order.id} className="card" style={{ padding: 10, display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'center' }}>
                                     <div>
                                         {order.product ? (
                                             <Link href={`/products/${order.product.id}`} style={{ textDecoration: 'none', color: 'var(--text-primary)' }}>

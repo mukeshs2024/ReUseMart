@@ -60,16 +60,7 @@ export default function CartPage() {
                                 const availableStock = Number.isFinite(item.availableStock) ? item.availableStock : 1;
 
                                 return (
-                                <article key={item.productId} className="card" style={{ padding: 12, display: 'grid', gridTemplateColumns: '96px 1fr auto', gap: 12, alignItems: 'center' }}>
-                                    <img
-                                        src={item.imageUrl}
-                                        alt={item.title}
-                                        style={{ width: 96, height: 96, objectFit: 'cover', borderRadius: 8, background: '#F3F4F6' }}
-                                        onError={(e) => {
-                                            (e.target as HTMLImageElement).src = 'https://placehold.co/96x96/F3F4F6/9CA3AF?text=No+Image';
-                                        }}
-                                    />
-
+                                <article key={item.productId} className="card" style={{ padding: 12, display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, alignItems: 'center' }}>
                                     <div>
                                         <Link href={`/products/${item.productId}`} style={{ textDecoration: 'none', color: 'var(--text-primary)' }}>
                                             <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>{item.title}</h3>

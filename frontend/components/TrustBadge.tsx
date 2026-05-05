@@ -26,7 +26,7 @@ const badgeConfig: Record<SellerLevel, {
     VERIFIED: {
         icon: 'âœ”',
         label: 'Verified',
-        className: 'bg-blue-500/10 text-blue-300 border border-blue-500/30',
+        className: 'bg-[#0D1B4C]/10 text-[#0D1B4C] border border-[#0D1B4C]/30',
         description: 'Email verified',
     },
     TRUSTED: {
@@ -105,7 +105,7 @@ export function SellerTrustCard({
                     )}
                     {/* Verified checkmark */}
                     {isPhoneVerified && (
-                        <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
+                        <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center" style={{ background: '#0D1B4C' }}>
                             <span className="text-white text-xs">âœ“</span>
                         </div>
                     )}

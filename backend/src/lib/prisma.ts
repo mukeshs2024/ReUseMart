@@ -6,7 +6,9 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createPrismaClient() {
-    const runtimeConnectionString = process.env.DATABASE_POOL_URL?.trim() || process.env.DATABASE_URL?.trim();
+    // Always prefer connection pool URL for better reliability
+    const runtimeConnectionString = (process.env.DATABASE_POOL_URL?.trim() || process.env.DATABASE_URL?.trim());
+
     if (!runtimeConnectionString) {
         throw new Error('DATABASE_POOL_URL or DATABASE_URL environment variable is required');
     }

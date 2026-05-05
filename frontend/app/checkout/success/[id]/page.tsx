@@ -101,7 +101,6 @@ export default function CheckoutSuccessPage() {
                                 <div className="mt-4 space-y-4">
                                     {order.items.map((item) => (
                                         <div key={item.id} className="flex gap-4 rounded-xl border border-gray-100 p-4">
-                                            <img src={item.product.imageUrl} alt={item.product.title} className="h-16 w-16 rounded-lg object-cover" />
                                             <div className="min-w-0 flex-1">
                                                 <h3 className="truncate text-sm font-semibold text-gray-900">{item.product.title}</h3>
                                                 <p className="mt-1 text-xs text-gray-500">Seller: {item.seller.name}</p>

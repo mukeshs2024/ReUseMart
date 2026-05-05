@@ -37,7 +37,7 @@ export default function AdminDashboardPage() {
 
     const statCards = data
         ? [
-            { label: 'Total Users', value: data.stats.totalUsers, icon: Users, color: 'text-blue-400 bg-blue-400/10' },
+            { label: 'Total Users', value: data.stats.totalUsers, icon: Users, color: 'text-[#0D1B4C] bg-[#0D1B4C]/10' },
             { label: 'Active Sellers', value: data.stats.totalSellers, icon: UserCheck, color: 'text-brand-400 bg-brand-400/10' },
             { label: 'Total Products', value: data.stats.totalProducts, icon: Package, color: 'text-purple-400 bg-purple-400/10' },
             {

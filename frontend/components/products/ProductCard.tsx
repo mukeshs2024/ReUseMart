@@ -8,7 +8,6 @@ import {
     formatCurrency,
     normalizeCondition,
     savingsPercent,
-    getPlaceholderImage,
 } from '@/lib/utils';
 import { useCartStore } from '@/store/cartStore';
 
@@ -38,16 +37,12 @@ export function ProductCard({ product }: { product: Product }) {
     const [added, setAdded] = useState(false);
     const [isWishlisted, setIsWishlisted] = useState(false);
 
-    const finalImageUrl = (!product.imageUrl || product.imageUrl.includes('unsplash.com') || product.imageUrl.includes('placehold.co')) 
-        ? getPlaceholderImage(product.category, product.id) 
-        : product.imageUrl;
-
     const handleAddToCart = () => {
         addItem({
             productId: product.id,
             title: product.title,
             price: product.price,
-            imageUrl: finalImageUrl,
+            imageUrl: '',
             sellerId: product.seller.id,
             sellerName,
             availableStock: Math.max(0, stock),
@@ -61,14 +56,22 @@ export function ProductCard({ product }: { product: Product }) {
         <article className="card-hover" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '100%' }}>
             <Link href={`/products/${product.id}`} className="block" style={{ textDecoration: 'none', flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <div style={{ position: 'relative', aspectRatio: '3 / 2', background: '#F3F4F6' }}>
-                    <img
-                        src={finalImageUrl}
-                        alt={product.title}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        onError={(e) => {
-                            (e.target as HTMLImageElement).src = 'https://placehold.co/400x300/F3F4F6/9CA3AF?text=No+Image';
+                    <div
+                        style={{
+                            position: 'absolute',
+                            inset: 0,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 12,
+                            fontWeight: 700,
+                            color: '#6B7280',
+                            letterSpacing: '0.08em',
+                            textTransform: 'uppercase',
                         }}
-                    />
+                    >
+                        Image Removed
+                    </div>
                     <div style={{ position: 'absolute', top: 10, left: 10, display: 'flex', gap: 6 }}>
                         <span className="badge-condition">{condition}</span>
                         {saved > 0 && <span className="badge-saving">Save {saved}%</span>}

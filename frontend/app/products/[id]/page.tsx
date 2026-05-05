@@ -24,6 +24,7 @@ interface Product {
     usageYears: number;
     imageUrl: string;
     condition?: string;
+    conditionDetails?: string[];
     createdAt: string;
     seller: { id: string; name: string };
     hasPaymentQr?: boolean;
@@ -189,6 +190,40 @@ export default function ProductDetailPage() {
         router.push('/checkout');
     };
 
+    const handleCompletePayment = async () => {
+        const canContinue = ensureBuyerMode();
+        if (!canContinue) {
+            return;
+        }
+
+        if (isOutOfStock) {
+            setPaymentError('This product is out of stock.');
+            return;
+        }
+
+        setPaymentProcessing(true);
+        setPaymentError('');
+
+        try {
+            addItem({
+                productId: product.id,
+                title: product.title,
+                price: product.price,
+                imageUrl: product.imageUrl,
+                sellerId: product.seller.id,
+                sellerName: product.seller.name,
+                availableStock,
+            }, quantity);
+
+            setShowPaymentModal(false);
+            router.push('/checkout');
+        } catch {
+            setPaymentError('Failed to proceed to checkout. Please try again.');
+        } finally {
+            setPaymentProcessing(false);
+        }
+    };
+
     const handleAddToCart = () => {
         addItem({
             productId: product.id,
@@ -231,20 +266,7 @@ export default function ProductDetailPage() {
                         </div>
                     )}
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
-                        <section>
-                            <div style={{ borderRadius: 8, overflow: 'hidden', background: '#F3F4F6', aspectRatio: '1 / 1' }}>
-                                <img
-                                    src={product.imageUrl}
-                                    alt={product.title}
-                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                    onError={(e) => {
-                                        (e.target as HTMLImageElement).src = 'https://placehold.co/700x700/F3F4F6/9CA3AF?text=No+Image';
-                                    }}
-                                />
-                            </div>
-                        </section>
-
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 18 }}>
                         <section>
                             <h1 style={{ margin: 0, fontSize: 28, fontWeight: 800, lineHeight: 1.2 }}>{product.title}</h1>
 
